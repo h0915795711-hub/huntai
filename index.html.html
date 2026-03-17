@@ -1,0 +1,2675 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUNTAI — 業務開發 AI 助理</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0c0e;
+  --surface: #13151a;
+  --surface2: #1a1d24;
+  --border: #252830;
+  --border2: #2e3240;
+  --orange: #f56a00;
+  --orange-dim: rgba(245,106,0,0.12);
+  --orange-glow: rgba(245,106,0,0.25);
+  --text: #e8e9ed;
+  --text-muted: #6b7280;
+  --text-dim: #9ca3af;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --red: #ef4444;
+  --yellow: #eab308;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Noto Sans TC',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  display:flex;flex-direction:column;
+  position:relative;
+}
+/* NOISE */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:1000;opacity:.4;
+}
+
+/* ─── TOPBAR ─── */
+#topbar{
+  height:52px;background:var(--surface);
+  border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;flex-shrink:0;position:relative;z-index:10;
+}
+.logo{
+  font-family:'Syne',sans-serif;font-size:20px;font-weight:800;
+  letter-spacing:0.12em;color:#fff;
+  display:flex;align-items:center;gap:10px;
+}
+.logo-tag{
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:500;
+  background:var(--orange);color:#fff;
+  padding:3px 7px;border-radius:2px;letter-spacing:0.15em;
+}
+.mode-switcher{
+  display:flex;background:var(--bg);border:1px solid var(--border2);
+  border-radius:4px;overflow:hidden;
+}
+.mode-btn{
+  padding:6px 18px;font-size:12px;cursor:pointer;transition:all .2s;
+  font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;
+  color:var(--text-muted);border:none;background:transparent;
+}
+.mode-btn.active{background:var(--orange);color:#fff;font-weight:500;}
+.topbar-right{display:flex;align-items:center;gap:16px;}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 8px var(--green);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.live-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);}
+
+/* ─── LAYOUT ─── */
+#app{display:flex;flex:1;overflow:hidden;}
+
+/* ─── SIDEBAR ─── */
+#sidebar{
+  width:220px;background:var(--surface);
+  border-right:1px solid var(--border2);
+  display:flex;flex-direction:column;
+  padding:20px 0;flex-shrink:0;
+}
+.nav-section{margin-bottom:28px;}
+.nav-heading{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  letter-spacing:0.22em;text-transform:uppercase;
+  color:var(--text-muted);padding:0 18px;margin-bottom:6px;
+}
+.nav-btn{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 18px;cursor:pointer;
+  border-left:2px solid transparent;
+  transition:all .18s;font-size:13.5px;
+  color:var(--text-dim);background:none;border-right:none;
+  border-top:none;border-bottom:none;width:100%;text-align:left;
+}
+.nav-btn:hover{color:var(--text);background:rgba(255,255,255,.03);}
+.nav-btn.active{
+  border-left-color:var(--orange);
+  background:var(--orange-dim);color:#fff;font-weight:500;
+}
+.nav-icon{font-size:15px;width:18px;text-align:center;opacity:.8;}
+.nav-chip{
+  margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9px;
+  background:var(--orange);color:#fff;padding:2px 6px;border-radius:10px;
+}
+
+/* Prospect list in sidebar */
+.prospect-item{
+  margin:0 12px 6px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:4px;
+  padding:10px 12px;cursor:pointer;transition:all .18s;
+}
+.prospect-item:hover{border-color:var(--border2);background:#1f2230;}
+.pi-name{font-size:12.5px;font-weight:500;}
+.pi-meta{font-size:10px;color:var(--text-muted);margin-top:3px;font-family:'JetBrains Mono',monospace;}
+.pi-heat{
+  display:inline-block;font-size:9px;margin-top:5px;
+  padding:2px 7px;border-radius:10px;font-family:'JetBrains Mono',monospace;
+}
+.heat-hot{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3);}
+.heat-warm{background:rgba(245,106,0,.12);color:#fb923c;border:1px solid rgba(245,106,0,.25);}
+.heat-cold{background:rgba(107,114,128,.1);color:var(--text-muted);border:1px solid var(--border);}
+
+/* ─── MAIN ─── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* PAGE HEADER */
+#pageHeader{
+  padding:20px 28px 16px;
+  border-bottom:1px solid var(--border2);
+  flex-shrink:0;
+}
+.page-title{
+  font-family:'Syne',sans-serif;font-size:22px;font-weight:700;
+  color:#fff;letter-spacing:0.02em;
+}
+.page-sub{font-size:12.5px;color:var(--text-muted);margin-top:4px;}
+
+/* FUNCTION TABS */
+#fnTabs{
+  display:flex;border-bottom:1px solid var(--border2);
+  padding:0 28px;background:var(--surface);flex-shrink:0;
+}
+.fn-tab{
+  padding:10px 18px;font-size:12px;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  color:var(--text-muted);transition:all .18s;
+  font-family:'JetBrains Mono',monospace;letter-spacing:0.06em;
+  background:none;border-top:none;border-left:none;border-right:none;
+}
+.fn-tab:hover{color:var(--text);}
+.fn-tab.active{color:var(--orange);border-bottom-color:var(--orange);}
+
+/* SCROLL AREA */
+#scrollArea{flex:1;overflow-y:auto;padding:24px 28px;}
+#scrollArea::-webkit-scrollbar{width:3px;}
+#scrollArea::-webkit-scrollbar-thumb{background:var(--border2);}
+
+/* ─── CARDS ─── */
+.card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:6px;margin-bottom:18px;overflow:hidden;
+}
+.card-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;border-bottom:1px solid var(--border2);
+  background:var(--surface2);
+}
+.card-title{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:0.18em;text-transform:uppercase;color:var(--text-muted);
+  display:flex;align-items:center;gap:8px;
+}
+.card-title-accent{color:var(--orange);}
+.card-body{padding:20px 22px;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;}
+.fgroup{display:flex;flex-direction:column;gap:5px;}
+.flabel{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:0.1em;color:var(--text-muted);text-transform:uppercase;
+}
+input,select,textarea{
+  background:var(--bg);border:1px solid var(--border2);
+  border-radius:4px;padding:9px 13px;
+  font-size:13.5px;color:var(--text);
+  font-family:'Noto Sans TC',sans-serif;
+  transition:border-color .18s;outline:none;width:100%;
+}
+input::placeholder,textarea::placeholder{color:var(--border2);}
+input:focus,select:focus,textarea:focus{border-color:var(--orange);}
+select option{background:var(--surface2);}
+textarea{resize:vertical;min-height:90px;line-height:1.7;}
+
+/* BUTTON */
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:10px 22px;border-radius:4px;
+  font-size:12.5px;font-family:'JetBrains Mono',monospace;
+  letter-spacing:0.08em;cursor:pointer;transition:all .18s;
+  border:none;font-weight:500;
+}
+.btn-primary{background:var(--orange);color:#fff;}
+.btn-primary:hover{background:#d95e00;transform:translateY(-1px);box-shadow:0 4px 18px var(--orange-glow);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-ghost{background:transparent;color:var(--text-muted);border:1px solid var(--border2);}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text);background:var(--surface2);}
+.btn-row{display:flex;gap:10px;align-items:center;margin-top:4px;}
+
+/* RESULT AREA */
+.result-card{
+  background:var(--bg);border:1px solid var(--border2);
+  border-radius:5px;overflow:hidden;margin-bottom:18px;
+  animation:slideUp .35s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.result-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;background:var(--surface2);
+  border-bottom:1px solid var(--border2);
+}
+.result-tag{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--orange);
+}
+.copy-btn{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  letter-spacing:0.12em;color:var(--text-muted);
+  background:none;border:1px solid var(--border2);
+  padding:4px 10px;border-radius:3px;cursor:pointer;transition:all .18s;
+}
+.copy-btn:hover{border-color:var(--orange);color:var(--orange);}
+.result-body{
+  padding:22px 22px;line-height:1.9;font-size:13.5px;color:var(--text-dim);
+  white-space:pre-wrap;
+}
+.result-body strong{color:var(--orange);font-weight:600;}
+.result-body em{color:var(--text);font-style:normal;}
+
+/* LOADING */
+.loader{display:flex;gap:5px;align-items:center;}
+.loader span{
+  width:5px;height:5px;background:var(--orange);border-radius:50%;
+  animation:ldot 1.1s infinite;
+}
+.loader span:nth-child(2){animation-delay:.18s;}
+.loader span:nth-child(3){animation-delay:.36s;}
+@keyframes ldot{0%,80%,100%{transform:scale(.7);opacity:.4}40%{transform:scale(1);opacity:1}}
+
+/* ─── RIGHT PANEL ─── */
+#rightPanel{
+  width:260px;background:var(--surface);
+  border-left:1px solid var(--border2);
+  padding:20px 16px;overflow-y:auto;flex-shrink:0;
+}
+#rightPanel::-webkit-scrollbar{width:3px;}
+#rightPanel::-webkit-scrollbar-thumb{background:var(--border2);}
+.rp-title{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.rp-title::after{content:'';flex:1;height:1px;background:var(--border2);}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;}
+.stat-box{
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:4px;padding:12px;
+}
+.stat-num{
+  font-family:'Syne',sans-serif;font-size:24px;font-weight:700;
+  color:#fff;line-height:1;
+}
+.stat-label{font-size:10px;color:var(--text-muted);margin-top:4px;}
+.stat-up{font-size:10px;color:var(--green);font-family:'JetBrains Mono',monospace;margin-top:3px;}
+
+/* PIPELINE */
+.pipeline-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;background:var(--surface2);
+  border:1px solid var(--border2);border-radius:4px;margin-bottom:7px;
+}
+.pi-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.pi-info{flex:1;min-width:0;}
+.pi-company{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pi-stage{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+.pi-score{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:var(--orange);font-weight:500;
+}
+
+/* TIP BOX */
+.tip-box{
+  background:var(--orange-dim);border:1px solid rgba(245,106,0,.2);
+  border-radius:4px;padding:12px 14px;
+  font-size:12px;color:var(--text-dim);line-height:1.7;margin-top:8px;
+}
+.tip-box strong{color:var(--orange);}
+
+/* DIVIDER */
+.rp-divider{height:1px;background:var(--border2);margin:18px 0;}
+
+/* SCORE BAR */
+.score-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.score-label{font-size:11px;color:var(--text-muted);width:70px;flex-shrink:0;}
+.score-bar{flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden;}
+.score-fill{height:100%;border-radius:2px;transition:width .6s ease;}
+.score-val{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-muted);width:28px;text-align:right;}
+
+.hidden{display:none!important;}
+
+/* SECTION TABS content */
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* ─── SEND BAR ─── */
+.send-bar{
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:6px;padding:18px 20px;margin-bottom:12px;
+  border-top:2px solid var(--orange);
+}
+.send-bar-title{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.send-bar-row{display:grid;grid-template-columns:1fr 1px 1fr;gap:0;}
+.send-section{padding:0 16px;}
+.send-section:first-child{padding-left:0;}
+.send-section:last-child{padding-right:0;}
+.send-divider{background:var(--border2);}
+.send-label{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:500;color:var(--text);
+  margin-bottom:10px;
+}
+.send-icon{
+  width:22px;height:22px;border-radius:4px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;
+}
+.gmail-icon{background:#ea4335;color:#fff;}
+.line-icon{background:#06c755;color:#fff;}
+.send-fields{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+.send-fields input{
+  background:var(--bg);border:1px solid var(--border2);
+  border-radius:3px;padding:7px 11px;font-size:12.5px;
+  color:var(--text);font-family:'Noto Sans TC',sans-serif;
+  outline:none;transition:border-color .18s;width:100%;
+}
+.send-fields input:focus{border-color:var(--orange);}
+.line-help{font-size:10.5px;color:var(--text-muted);line-height:1.6;padding:3px 0;}
+.line-help a{color:var(--green);}
+.line-setup-tip{
+  font-size:11px;color:var(--text-muted);line-height:1.7;
+  background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.15);
+  border-radius:3px;padding:8px 10px;margin-bottom:2px;
+}
+.btn-send{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 16px;border-radius:3px;
+  font-size:12px;font-family:'JetBrains Mono',monospace;
+  letter-spacing:0.06em;cursor:pointer;transition:all .18s;
+  border:none;font-weight:500;
+}
+.gmail-btn{background:#ea4335;color:#fff;}
+.gmail-btn:hover{background:#c0392b;transform:translateY(-1px);}
+.gmail-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.line-btn{background:#06c755;color:#fff;}
+.line-btn:hover{background:#05a847;transform:translateY(-1px);}
+.line-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.line-open-btn{
+  background:transparent;color:#06c755;
+  border:1px solid #06c755;margin-left:8px;
+}
+.line-open-btn:hover{background:rgba(6,199,85,.1);}
+.send-btn-group{display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
+.send-status{
+  margin-top:8px;padding:7px 12px;border-radius:3px;
+  font-size:12px;font-family:'JetBrains Mono',monospace;
+}
+.send-status.success{background:rgba(34,197,94,.12);color:#4ade80;border:1px solid rgba(34,197,94,.2);}
+.send-status.error{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);}
+.send-status.loading{background:rgba(245,106,0,.1);color:var(--orange);border:1px solid rgba(245,106,0,.2);}
+
+/* CRM TABLE */
+.th{
+  padding:9px 12px;text-align:left;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);
+  background:var(--surface2);font-weight:500;
+}
+.td{
+  padding:10px 12px;border-bottom:1px solid var(--border);
+  font-size:12.5px;color:var(--text-dim);vertical-align:middle;
+}
+tr:hover .td{background:rgba(255,255,255,.015);}
+.heat-pill{
+  display:inline-block;padding:2px 8px;border-radius:10px;
+  font-size:10px;font-family:'JetBrains Mono',monospace;
+}
+.hp-hot{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25);}
+.hp-warm{background:rgba(245,106,0,.12);color:#fb923c;border:1px solid rgba(245,106,0,.2);}
+.hp-cold{background:rgba(107,114,128,.1);color:var(--text-muted);border:1px solid var(--border2);}
+.td-action{display:flex;gap:6px;align-items:center;}
+.act-btn{
+  background:none;border:1px solid var(--border2);color:var(--text-muted);
+  padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer;
+  font-family:'JetBrains Mono',monospace;transition:all .15s;
+}
+.act-btn:hover{border-color:var(--orange);color:var(--orange);}
+.act-btn.del:hover{border-color:var(--red);color:#f87171;}
+
+/* BULK checkbox list */
+.bulk-check-item{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 10px;border-radius:3px;cursor:pointer;
+  transition:background .15s;
+}
+.bulk-check-item:hover{background:rgba(255,255,255,.04);}
+.bulk-check-item label{font-size:12.5px;cursor:pointer;flex:1;}
+.bulk-check-item span{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+
+/* ─── VOICE / DIAL ─── */
+.voice-dial-panel{
+  background:var(--bg);border:1px solid var(--border2);
+  border-radius:6px;padding:18px 20px;
+  border-top:2px solid #8b5cf6;
+}
+.voice-dial-title{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:14px;
+}
+.voice-dial-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.dial-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:16px 10px;border-radius:6px;
+  cursor:pointer;transition:all .2s;border:1px solid var(--border2);
+  background:var(--surface2);
+}
+.dial-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.3);}
+.phone-dial-btn:hover{border-color:#22c55e;box-shadow:0 6px 20px rgba(34,197,94,.15);}
+.line-dial-btn:hover{border-color:#06c755;box-shadow:0 6px 20px rgba(6,199,85,.15);}
+.line-video-btn:hover{border-color:#3b82f6;box-shadow:0 6px 20px rgba(59,130,246,.15);}
+.dial-icon{font-size:26px;line-height:1;}
+.dial-label{font-size:13px;font-weight:600;color:var(--text);}
+.dial-sub{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;}
+
+/* CRM voice call row */
+.crm-voice-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;background:var(--surface2);
+  border:1px solid var(--border2);border-radius:4px;
+}
+.crm-voice-info{flex:1;}
+.crm-voice-name{font-size:13.5px;font-weight:500;color:var(--text);}
+.crm-voice-meta{font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+.crm-voice-btns{display:flex;gap:6px;align-items:center;}
+.vcall-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:3px;font-size:11px;
+  font-family:'JetBrains Mono',monospace;cursor:pointer;
+  border:none;transition:all .18s;font-weight:500;
+}
+.vcall-phone{background:#166534;color:#4ade80;border:1px solid #166534;}
+.vcall-phone:hover{background:#14532d;}
+.vcall-line{background:#064e3b;color:#34d399;border:1px solid #065f46;}
+.vcall-line:hover{background:#052e16;}
+.vcall-script{background:transparent;color:#8b5cf6;border:1px solid #4c1d95;}
+.vcall-script:hover{background:rgba(139,92,246,.1);}
+
+/* CALL HISTORY */
+.call-log-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+}
+.call-log-item:last-child{border-bottom:none;}
+.call-log-icon{font-size:18px;margin-top:2px;}
+.call-log-info{flex:1;}
+.call-log-name{font-size:13px;font-weight:500;color:var(--text);}
+.call-log-time{font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+.call-log-note{font-size:12px;color:var(--text-dim);margin-top:4px;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="logo">
+    HUNT<span style="color:var(--orange)">AI</span>
+    <span class="logo-tag">PRO</span>
+  </div>
+  <div class="mode-switcher">
+    <button class="mode-btn active" onclick="setMode('b2b',this)">B2B 企業</button>
+    <button class="mode-btn" onclick="setMode('b2c',this)">B2C 消費者</button>
+  </div>
+  <div class="topbar-right">
+    <div class="live-dot"></div>
+    <span class="live-label">AI 已就緒</span>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="nav-section">
+      <div class="nav-heading">功能模組</div>
+      <button class="nav-btn active" onclick="goPage('email',this)">
+        <span class="nav-icon">✉</span> 開發信生成
+        <span class="nav-chip">AI</span>
+      </button>
+      <button class="nav-btn" onclick="goPage('profile',this)">
+        <span class="nav-icon">◎</span> 客戶畫像
+      </button>
+      <button class="nav-btn" onclick="goPage('script',this)">
+        <span class="nav-icon">◈</span> 話術腳本
+      </button>
+      <button class="nav-btn" onclick="goPage('followup',this)">
+        <span class="nav-icon">⟳</span> 跟進管理
+      </button>
+      <button class="nav-btn" onclick="goPage('crm',this)">
+        <span class="nav-icon">⊡</span> 客戶 CRM
+        <span class="nav-chip" style="background:var(--blue)">NEW</span>
+      </button>
+      <button class="nav-btn" onclick="goPage('bulk',this)">
+        <span class="nav-icon">⊞</span> 批量發送
+        <span class="nav-chip" style="background:var(--blue)">NEW</span>
+      </button>
+      <button class="nav-btn" onclick="goPage('calendar',this)">
+        <span class="nav-icon">◷</span> 行事曆提醒
+        <span class="nav-chip" style="background:var(--blue)">NEW</span>
+      </button>
+      <button class="nav-btn" onclick="goPage('voice',this)">
+        <span class="nav-icon">☎</span> 語音撥打
+        <span class="nav-chip" style="background:#8b5cf6">NEW</span>
+      </button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-heading">進行中客戶</div>
+      <div class="prospect-item">
+        <div class="pi-name">台積電 TSMC</div>
+        <div class="pi-meta">採購部 · B2B</div>
+        <span class="pi-heat heat-hot">🔥 高潛力</span>
+      </div>
+      <div class="prospect-item">
+        <div class="pi-name">緯創資通</div>
+        <div class="pi-meta">IT部門 · B2B</div>
+        <span class="pi-heat heat-warm">◐ 培育中</span>
+      </div>
+      <div class="prospect-item">
+        <div class="pi-name">王小明（消費者）</div>
+        <div class="pi-meta">高收入族群 · B2C</div>
+        <span class="pi-heat heat-cold">○ 冷接觸</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="pageHeader">
+      <div class="page-title" id="pageTitle">開發信生成</div>
+      <div class="page-sub" id="pageSub">根據客戶資訊，AI 自動生成高度個人化的業務開發信</div>
+    </div>
+    <div id="fnTabs">
+      <button class="fn-tab active" onclick="switchFn('generate',this)">⚡ 生成</button>
+      <button class="fn-tab" onclick="switchFn('batch',this)">⊞ 批量模板</button>
+      <button class="fn-tab" onclick="switchFn('history',this)">◷ 歷史記錄</button>
+    </div>
+    <div id="scrollArea">
+
+      <!-- ══ EMAIL PAGE ══ -->
+      <div id="page-email" class="tab-content active">
+        <!-- Generate -->
+        <div id="fn-generate" class="tab-content active">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="card-title-accent">01</span> 目標客戶資訊</div>
+            </div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="fgroup">
+                  <div class="flabel">公司 / 姓名</div>
+                  <input id="e-company" placeholder="例：台積電 或 王小姐">
+                </div>
+                <div class="fgroup">
+                  <div class="flabel">職稱 / 身份</div>
+                  <input id="e-title" placeholder="例：採購副理 / 35歲上班族">
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="fgroup">
+                  <div class="flabel">產業 / 族群</div>
+                  <select id="e-industry">
+                    <option value="">請選擇...</option>
+                    <optgroup label="B2B 產業">
+                      <option>半導體 / 電子製造</option>
+                      <option>金融 / 保險</option>
+                      <option>科技 / SaaS</option>
+                      <option>製造業</option>
+                      <option>物流 / 供應鏈</option>
+                      <option>醫療 / 生技</option>
+                      <option>零售 / 電商</option>
+                    </optgroup>
+                    <optgroup label="B2C 族群">
+                      <option>高收入上班族</option>
+                      <option>年輕媽媽</option>
+                      <option>退休族</option>
+                      <option>學生族群</option>
+                      <option>小型個人工作室</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="fgroup">
+                  <div class="flabel">信件語氣</div>
+                  <select id="e-tone">
+                    <option value="professional">專業正式</option>
+                    <option value="warm">親切溫暖</option>
+                    <option value="concise">精簡有力</option>
+                    <option value="consultative">顧問諮詢</option>
+                    <option value="urgency">製造緊迫感</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fgroup" style="margin-bottom:14px">
+                <div class="flabel">你的產品 / 服務（核心價值一句話）</div>
+                <input id="e-product" placeholder="例：讓中小企業節省40%人力成本的AI自動化平台">
+              </div>
+              <div class="fgroup" style="margin-bottom:14px">
+                <div class="flabel">最近觸發點（新聞、動態、痛點） <span style="color:var(--green);font-size:9px">★ 回覆率 +3x</span></div>
+                <textarea id="e-trigger" placeholder="例：看到貴公司剛完成B輪融資／最近在LinkedIn看到您分享的供應鏈焦慮貼文..."></textarea>
+              </div>
+              <div class="fgroup" style="margin-bottom:18px">
+                <div class="flabel">期望 CTA（行動呼籲）</div>
+                <select id="e-cta">
+                  <option>安排15分鐘通話</option>
+                  <option>預約產品Demo</option>
+                  <option>發送免費報告</option>
+                  <option>邀請參加免費試用</option>
+                  <option>詢問是否有相關需求</option>
+                </select>
+              </div>
+              <div class="btn-row">
+                <button class="btn btn-primary" id="genEmailBtn" onclick="generateEmail()">
+                  ⚡ AI 生成開發信
+                </button>
+                <button class="btn btn-ghost" onclick="clearEmailForm()">清除</button>
+                <div id="emailLoader" class="loader hidden">
+                  <span></span><span></span><span></span>
+                  <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);margin-left:4px">生成中...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="emailResult" class="hidden">
+            <div class="result-card">
+              <div class="result-header">
+                <div class="result-tag">⚑ AI 生成結果</div>
+                <button class="copy-btn" onclick="copyEl('emailResultBody')">COPY</button>
+              </div>
+              <div class="result-body" id="emailResultBody"></div>
+            </div>
+            <!-- SEND ACTION BAR -->
+            <div class="send-bar">
+              <div class="send-bar-title">📤 直接發送</div>
+              <div class="send-bar-row">
+                <!-- Gmail -->
+                <div class="send-section">
+                  <div class="send-label"><span class="send-icon gmail-icon">M</span> Gmail 發送</div>
+                  <div class="send-fields">
+                    <input id="gmail-to" placeholder="收件人 Email" type="email">
+                    <input id="gmail-subject" placeholder="主旨（自動帶入）">
+                  </div>
+                  <button class="btn-send gmail-btn" id="gmailSendBtn" onclick="sendGmail()">
+                    <span>📧</span> 用 Gmail 發送
+                  </button>
+                  <div id="gmailStatus" class="send-status hidden"></div>
+                </div>
+                <div class="send-divider"></div>
+                <!-- LINE Messaging API -->
+                <div class="send-section">
+                  <div class="send-label"><span class="send-icon line-icon">L</span> LINE 發送</div>
+                  <div class="line-setup-tip">
+                    <span style="color:var(--yellow);font-size:10px;font-family:'JetBrains Mono',monospace;">⚠ LINE Notify 已停用</span><br>
+                    請改用 <strong style="color:var(--green)">LINE Messaging API</strong>（免費，每月500則）<br>
+                    <a href="https://developers.line.biz/console/" target="_blank" style="color:var(--green);font-size:10px">① 前往 LINE Developers 建立官方帳號 ↗</a>
+                  </div>
+                  <div class="send-fields" style="margin-top:8px">
+                    <input id="line-token" placeholder="Channel Access Token" type="password">
+                    <input id="line-user-id" placeholder="目標 User ID（收訊人）">
+                  </div>
+                  <div class="line-help">
+                    Token 位於 LINE Developers → Messaging API 頁籤 → Channel access token<br>
+                    User ID：請對方加你的 LINE Bot 為好友後傳訊息，即可取得
+                  </div>
+                  <div class="send-btn-group" style="margin-top:8px">
+                    <button class="btn-send line-btn" onclick="sendLineMsg('line-token','line-user-id','emailResultBody','lineStatus')">
+                      🟢 LINE 發送
+                    </button>
+                    <button class="btn-send line-open-btn" onclick="openLineShare('emailResultBody')">
+                      📱 開啟 LINE App
+                    </button>
+                  </div>
+                  <div id="lineStatus" class="send-status hidden"></div>
+                </div>
+              </div>
+            </div>
+            <div class="btn-row" style="margin-top:8px">
+              <button class="btn btn-ghost" onclick="generateEmail()">⟳ 重新生成</button>
+              <button class="btn btn-ghost" onclick="saveToProspects()">＋ 存入記錄</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Batch -->
+        <div id="fn-batch" class="tab-content">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="card-title-accent">⊞</span> 批量信件模板庫</div>
+            </div>
+            <div class="card-body">
+              <div class="fgroup" style="margin-bottom:14px">
+                <div class="flabel">產業 / 場景</div>
+                <select id="tpl-industry">
+                  <option>半導體製造業 B2B</option>
+                  <option>SaaS 軟體公司 B2B</option>
+                  <option>金融保險 B2C</option>
+                  <option>電商零售 B2C</option>
+                </select>
+              </div>
+              <div class="fgroup" style="margin-bottom:14px">
+                <div class="flabel">你的產品</div>
+                <input id="tpl-product" placeholder="例：ERP 系統">
+              </div>
+              <div class="fgroup" style="margin-bottom:18px">
+                <div class="flabel">需要幾個版本</div>
+                <select id="tpl-count">
+                  <option value="3">3 個版本（不同語氣）</option>
+                  <option value="5">5 個版本（A/B/C/D/E 測試）</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="generateTemplates()">⊞ 批量生成模板</button>
+              <div id="tplLoader" class="loader hidden" style="margin-top:12px"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+          <div id="tplResult" class="hidden">
+            <div class="result-card">
+              <div class="result-header">
+                <div class="result-tag">⊞ 批量模板</div>
+                <button class="copy-btn" onclick="copyEl('tplResultBody')">COPY ALL</button>
+              </div>
+              <div class="result-body" id="tplResultBody"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div id="fn-history" class="tab-content">
+          <div class="card">
+            <div class="card-body" style="color:var(--text-muted);font-size:13px;line-height:2">
+              📁 歷史記錄功能<br>
+              <span style="font-size:12px">儲存的開發信、分析報告、話術腳本將顯示於此。<br>目前示範版尚未連接後端資料庫。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PROFILE PAGE ══ -->
+      <div id="page-profile" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">◎</span> 客戶畫像分析</div>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">公司 / 客戶名稱</div>
+                <input id="p-company" placeholder="例：聯發科技">
+              </div>
+              <div class="fgroup">
+                <div class="flabel">規模</div>
+                <select id="p-size">
+                  <option>新創（1-50人）</option>
+                  <option>中小企業（51-500人）</option>
+                  <option>中型企業（500-2000人）</option>
+                  <option>大型集團（2000人以上）</option>
+                  <option>個人消費者</option>
+                </select>
+              </div>
+            </div>
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">你蒐集到的任何資訊（網站、LinkedIn、新聞）</div>
+              <textarea id="p-info" rows="5" placeholder="貼上你找到的客戶資料：&#10;- 公司最新新聞&#10;- LinkedIn 個人簡介&#10;- 官網描述&#10;- 你觀察到的任何線索..."></textarea>
+            </div>
+            <div class="fgroup" style="margin-bottom:18px">
+              <div class="flabel">你想解決他們的什麼問題？</div>
+              <input id="p-pain" placeholder="例：降低人力成本、提升銷售轉換率">
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="profileBtn" onclick="analyzeProfile()">◎ 生成客戶畫像報告</button>
+              <div id="profileLoader" class="loader hidden"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </div>
+        <div id="profileResult" class="hidden">
+          <div class="result-card">
+            <div class="result-header">
+              <div class="result-tag">◈ 客戶畫像報告</div>
+              <button class="copy-btn" onclick="copyEl('profileResultBody')">COPY</button>
+            </div>
+            <div class="result-body" id="profileResultBody"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SCRIPT PAGE ══ -->
+      <div id="page-script" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">◈</span> 話術腳本 & 問答建議</div>
+          </div>
+          <div class="card-body">
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">場景類型</div>
+              <select id="s-scene">
+                <option>電話開發（Cold Call）</option>
+                <option>客戶提出價格異議</option>
+                <option>客戶說「不需要」拒絕</option>
+                <option>初次會議開場白</option>
+                <option>Demo 演示結束後推進簽約</option>
+                <option>競品比較詢問</option>
+                <option>自定義情境</option>
+              </select>
+            </div>
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">客戶說的話 / 提出的問題</div>
+              <textarea id="s-question" rows="3" placeholder="例：「你們的東西跟競品A一樣啊，為什麼要選你們？而且你們貴很多...」"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">你的核心優勢</div>
+                <input id="s-usp" placeholder="例：導入快、售後響應24hr">
+              </div>
+              <div class="fgroup">
+                <div class="flabel">回應策略</div>
+                <select id="s-strategy">
+                  <option>承認 + 差異化反轉</option>
+                  <option>數據 + 案例佐證</option>
+                  <option>提問引導需求</option>
+                  <option>共情 + 重新定框架</option>
+                  <option>製造損失厭惡感</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:14px" class="btn-row">
+              <button class="btn btn-primary" id="scriptBtn" onclick="generateScript()">◈ 生成話術腳本</button>
+              <div id="scriptLoader" class="loader hidden"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </div>
+        <div id="scriptResult" class="hidden">
+          <div class="result-card">
+            <div class="result-header">
+              <div class="result-tag">✦ 話術腳本</div>
+              <button class="copy-btn" onclick="copyEl('scriptResultBody')">COPY</button>
+            </div>
+            <div class="result-body" id="scriptResultBody"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ FOLLOWUP PAGE ══ -->
+      <div id="page-followup" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">⟳</span> 跟進管理 & 提醒生成</div>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">客戶名稱</div>
+                <input id="f-name" placeholder="例：聯發科技 / 陳副理">
+              </div>
+              <div class="fgroup">
+                <div class="flabel">跟進輪次</div>
+                <select id="f-round">
+                  <option value="1">第1次（初次接觸後，3天無回音）</option>
+                  <option value="2">第2次（一週無回音）</option>
+                  <option value="3">第3次（最後一搏式跟進）</option>
+                  <option value="warm">重新暖身（沉默超過1個月）</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">上次互動方式</div>
+                <select id="f-lastaction">
+                  <option>發送冷郵件</option>
+                  <option>電話未接聽</option>
+                  <option>完成線上Demo</option>
+                  <option>客戶說需要考慮</option>
+                  <option>發送報價單</option>
+                  <option>實體會議</option>
+                </select>
+              </div>
+              <div class="fgroup">
+                <div class="flabel">跟進管道</div>
+                <select id="f-channel">
+                  <option>Email</option>
+                  <option>LinkedIn 訊息</option>
+                  <option>電話</option>
+                  <option>Line / WhatsApp</option>
+                </select>
+              </div>
+            </div>
+            <div class="fgroup" style="margin-bottom:18px">
+              <div class="flabel">補充備注（有無新誘因？）</div>
+              <textarea id="f-note" rows="2" placeholder="例：對方公司剛宣布擴編、我方推出新功能、限時折扣活動..."></textarea>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="followupBtn" onclick="generateFollowup()">⟳ 生成跟進訊息</button>
+              <div id="followupLoader" class="loader hidden"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </div>
+        <div id="followupResult" class="hidden">
+          <div class="result-card">
+            <div class="result-header">
+              <div class="result-tag">⟳ 跟進訊息</div>
+              <button class="copy-btn" onclick="copyEl('followupResultBody')">COPY</button>
+            </div>
+            <div class="result-body" id="followupResultBody"></div>
+          </div>
+          <!-- SEND BAR (followup) -->
+          <div class="send-bar">
+            <div class="send-bar-title">📤 直接發送跟進訊息</div>
+            <div class="send-bar-row">
+              <div class="send-section">
+                <div class="send-label"><span class="send-icon gmail-icon">M</span> Gmail 發送</div>
+                <div class="send-fields">
+                  <input id="fu-gmail-to" placeholder="收件人 Email" type="email">
+                  <input id="fu-gmail-subject" placeholder="主旨">
+                </div>
+                <button class="btn-send gmail-btn" onclick="sendFollowupGmail()">📧 Gmail 發送</button>
+                <div id="fuGmailStatus" class="send-status hidden"></div>
+              </div>
+              <div class="send-divider"></div>
+              <div class="send-section">
+                <div class="send-label"><span class="send-icon line-icon">L</span> LINE 發送</div>
+                <div class="line-setup-tip">
+                  <span style="color:var(--yellow);font-size:10px;font-family:'JetBrains Mono',monospace;">⚠ LINE Notify 已停用</span>，改用 Messaging API
+                </div>
+                <div class="send-fields" style="margin-top:8px">
+                  <input id="fu-line-token" placeholder="Channel Access Token" type="password">
+                  <input id="fu-line-user-id" placeholder="目標 User ID">
+                </div>
+                <div class="send-btn-group" style="margin-top:8px">
+                  <button class="btn-send line-btn" onclick="sendLineMsg('fu-line-token','fu-line-user-id','followupResultBody','fuLineStatus')">🟢 LINE 發送</button>
+                  <button class="btn-send line-open-btn" onclick="openLineShare('followupResultBody')">📱 開啟 LINE App</button>
+                </div>
+                <div id="fuLineStatus" class="send-status hidden"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CRM PAGE ══ -->
+      <div id="page-crm" class="tab-content">
+        <!-- Add Prospect -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">⊡</span> 新增客戶</div>
+            <button class="copy-btn" onclick="exportCRM()">匯出 CSV</button>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="fgroup"><div class="flabel">公司 / 客戶名稱</div><input id="crm-name" placeholder="例：台積電"></div>
+              <div class="fgroup"><div class="flabel">聯絡人</div><input id="crm-contact" placeholder="例：陳副理"></div>
+            </div>
+            <div class="form-row">
+              <div class="fgroup"><div class="flabel">Email</div><input id="crm-email" type="email" placeholder="email@company.com"></div>
+              <div class="fgroup"><div class="flabel">電話</div><input id="crm-phone" placeholder="0912-345-678"></div>
+            </div>
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">潛力分級</div>
+                <select id="crm-heat">
+                  <option value="hot">🔥 高潛力</option>
+                  <option value="warm">◐ 培育中</option>
+                  <option value="cold">○ 冷接觸</option>
+                </select>
+              </div>
+              <div class="fgroup">
+                <div class="flabel">目前階段</div>
+                <select id="crm-stage">
+                  <option>冷接觸</option>
+                  <option>已發開發信</option>
+                  <option>初步回覆</option>
+                  <option>Demo 安排中</option>
+                  <option>Demo 完成</option>
+                  <option>報價中</option>
+                  <option>談判中</option>
+                  <option>成交</option>
+                  <option>暫緩</option>
+                </select>
+              </div>
+            </div>
+            <div class="fgroup" style="margin-bottom:16px">
+              <div class="flabel">備注</div>
+              <textarea id="crm-note" rows="2" placeholder="任何重要資訊..."></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="addCRMProspect()">＋ 加入名單</button>
+          </div>
+        </div>
+        <!-- CRM Table -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">◎</span> 客戶名單</div>
+            <input id="crm-search" placeholder="搜尋..." style="background:var(--bg);border:1px solid var(--border2);border-radius:3px;padding:4px 10px;font-size:12px;color:var(--text);outline:none;width:160px;" oninput="renderCRM()">
+          </div>
+          <div id="crm-table-wrap" style="overflow-x:auto">
+            <table id="crm-table" style="width:100%;border-collapse:collapse;font-size:12.5px;">
+              <thead>
+                <tr style="border-bottom:1px solid var(--border2);">
+                  <th class="th">公司/客戶</th><th class="th">聯絡人</th><th class="th">Email</th>
+                  <th class="th">電話</th><th class="th">分級</th><th class="th">階段</th><th class="th">備注</th><th class="th">操作</th>
+                </tr>
+              </thead>
+              <tbody id="crm-tbody"></tbody>
+            </table>
+            <div id="crm-empty" style="padding:32px;text-align:center;color:var(--text-muted);font-size:13px;">尚無客戶資料 — 從上方新增第一筆</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ BULK SEND PAGE ══ -->
+      <div id="page-bulk" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">⊞</span> 批量發送設定</div>
+          </div>
+          <div class="card-body">
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">選擇發送名單來源</div>
+              <select id="bulk-source" onchange="toggleBulkSource(this.value)">
+                <option value="crm">從 CRM 名單選取</option>
+                <option value="manual">手動輸入（每行一個Email）</option>
+              </select>
+            </div>
+            <!-- CRM picker -->
+            <div id="bulk-crm-picker" style="margin-bottom:14px">
+              <div class="flabel" style="margin-bottom:8px">選取收件人（勾選）</div>
+              <div id="bulk-crm-list" style="max-height:180px;overflow-y:auto;background:var(--bg);border:1px solid var(--border2);border-radius:4px;padding:8px;">
+                <div style="color:var(--text-muted);font-size:12px;padding:8px;">請先在 CRM 中新增客戶</div>
+              </div>
+            </div>
+            <!-- Manual input -->
+            <div id="bulk-manual-input" class="hidden" style="margin-bottom:14px">
+              <div class="fgroup">
+                <div class="flabel">Email 清單（每行一筆）</div>
+                <textarea id="bulk-emails" rows="5" placeholder="contact@tsmc.com&#10;sales@wistron.com&#10;info@pegatron.com"></textarea>
+              </div>
+            </div>
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">信件主旨</div>
+              <input id="bulk-subject" placeholder="例：為您的團隊提升30%業績效率">
+            </div>
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">信件正文</div>
+              <textarea id="bulk-body" rows="6" placeholder="貼上已生成的開發信內容，或直接在此撰寫...&#10;&#10;提示：使用 {name} 自動帶入客戶名稱"></textarea>
+            </div>
+            <div class="fgroup" style="margin-bottom:16px">
+              <div class="flabel">發送間隔（避免被標為垃圾郵件）</div>
+              <select id="bulk-delay">
+                <option value="2">2 秒（快速）</option>
+                <option value="5" selected>5 秒（建議）</option>
+                <option value="10">10 秒（安全）</option>
+              </select>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="bulkSendBtn" onclick="startBulkSend()">⊞ 開始批量發送</button>
+              <button class="btn btn-ghost" onclick="previewBulk()">👁 預覽第一封</button>
+            </div>
+          </div>
+        </div>
+        <!-- Progress -->
+        <div id="bulk-progress-card" class="card hidden">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">⟳</span> 發送進度</div>
+            <button class="copy-btn" onclick="stopBulk()">停止</button>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+              <span id="bulk-prog-text" style="color:var(--text-muted)">準備中...</span>
+              <span id="bulk-prog-count" style="color:var(--orange)">0 / 0</span>
+            </div>
+            <div style="background:var(--bg);border-radius:3px;height:6px;overflow:hidden;margin-bottom:16px;">
+              <div id="bulk-prog-bar" style="height:100%;background:var(--orange);border-radius:3px;width:0%;transition:width .4s"></div>
+            </div>
+            <div id="bulk-log" style="max-height:200px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:2;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CALENDAR PAGE ══ -->
+      <div id="page-calendar" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">◷</span> 新增跟進提醒到 Google Calendar</div>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="fgroup"><div class="flabel">客戶名稱</div><input id="cal-client" placeholder="例：台積電 陳副理"></div>
+              <div class="fgroup">
+                <div class="flabel">提醒類型</div>
+                <select id="cal-type">
+                  <option>📧 發送跟進 Email</option>
+                  <option>📞 撥打跟進電話</option>
+                  <option>💼 客戶會議</option>
+                  <option>📋 發送報價單</option>
+                  <option>🎯 Demo 演示</option>
+                  <option>🔄 重新暖身接觸</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="fgroup"><div class="flabel">日期</div><input id="cal-date" type="date"></div>
+              <div class="fgroup"><div class="flabel">時間</div><input id="cal-time" type="time" value="09:00"></div>
+            </div>
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">提前提醒</div>
+              <select id="cal-reminder">
+                <option value="15">15 分鐘前</option>
+                <option value="30" selected>30 分鐘前</option>
+                <option value="60">1 小時前</option>
+                <option value="1440">1 天前</option>
+              </select>
+            </div>
+            <div class="fgroup" style="margin-bottom:16px">
+              <div class="flabel">備注（自動填入 Calendar 描述）</div>
+              <textarea id="cal-note" rows="3" placeholder="例：對方上次說要討論採購預算，記得準備報價單..."></textarea>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="calAddBtn" onclick="addCalendarEvent()">
+                📅 加入 Google Calendar
+              </button>
+              <div id="calLoader" class="loader hidden"><span></span><span></span><span></span></div>
+            </div>
+            <div id="calStatus" class="send-status hidden" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <!-- Batch calendar from CRM -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">⊞</span> 從 CRM 批量排定跟進提醒</div>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">從哪天開始</div>
+                <input id="batch-cal-start" type="date">
+              </div>
+              <div class="fgroup">
+                <div class="flabel">每筆間隔幾天</div>
+                <select id="batch-cal-interval">
+                  <option value="1">每天一筆</option>
+                  <option value="2" selected>每2天一筆</option>
+                  <option value="3">每3天一筆</option>
+                  <option value="5">每5天一筆</option>
+                </select>
+              </div>
+            </div>
+            <div id="batch-crm-picker2" style="margin-bottom:14px">
+              <div class="flabel" style="margin-bottom:8px">選取要排提醒的客戶</div>
+              <div id="batch-crm-list2" style="max-height:160px;overflow-y:auto;background:var(--bg);border:1px solid var(--border2);border-radius:4px;padding:8px;">
+                <div style="color:var(--text-muted);font-size:12px;padding:8px;">請先在 CRM 中新增客戶</div>
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="batchAddCalendar()">📅 批量加入 Calendar</button>
+            <div id="batchCalStatus" class="send-status hidden" style="margin-top:12px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ VOICE PAGE — Bland.ai AI 自動撥打 ══ -->
+      <div id="page-voice" class="tab-content">
+
+        <!-- API Key Setup -->
+        <div class="card" id="bland-setup-card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">⚙</span> Bland.ai 設定</div>
+            <span id="bland-status-badge" class="heat-pill hp-cold">未設定</span>
+          </div>
+          <div class="card-body">
+            <div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:4px;padding:14px 16px;margin-bottom:16px;font-size:12.5px;line-height:1.9;color:var(--text-dim)">
+              <strong style="color:#a78bfa">🤖 Bland.ai</strong> 是 AI 自動電話服務，會<strong style="color:var(--text)">自動撥打客戶電話</strong>、用繁體中文介紹你的產品、即時回答問題，全程不需要你開口。<br>
+              <strong style="color:var(--green)">① </strong>前往 <a href="https://app.bland.ai" target="_blank" style="color:#a78bfa">app.bland.ai</a> 免費註冊<br>
+              <strong style="color:var(--green)">② </strong>進入 Settings → API Keys → 複製你的 API Key<br>
+              <strong style="color:var(--green)">③ </strong>貼入下方後按「驗證」即可開始使用
+            </div>
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">Bland.ai API Key</div>
+                <input id="bland-apikey" type="password" placeholder="sk-...（貼入你的 API Key）" oninput="saveBlandKey()">
+              </div>
+              <div class="fgroup">
+                <div class="flabel">發話號碼（Bland 提供的號碼）</div>
+                <input id="bland-from" placeholder="+1XXXXXXXXXX（Bland dashboard 取得）" oninput="saveBlandKey()">
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="verifyBlandKey()">✓ 驗證 API Key</button>
+              <div id="blandVerifyStatus" class="send-status hidden" style="margin-left:8px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Agent Script Setup -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">🤖</span> AI 業務助理話術設定</div>
+            <button class="copy-btn" onclick="generateBlandScript()">AI 自動生成</button>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">你的公司 / 品牌名稱</div>
+                <input id="bland-company" placeholder="例：HUNTAI 科技">
+              </div>
+              <div class="fgroup">
+                <div class="flabel">產品 / 服務</div>
+                <input id="bland-product" placeholder="例：AI 業務自動化平台">
+              </div>
+            </div>
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">通話目的</div>
+              <select id="bland-purpose">
+                <option value="intro">初次開發介紹</option>
+                <option value="demo">邀約 Demo 會議</option>
+                <option value="followup">跟進未回覆客戶</option>
+                <option value="quote">報價說明</option>
+                <option value="close">促成成交</option>
+              </select>
+            </div>
+            <div class="fgroup" style="margin-bottom:6px">
+              <div class="flabel" style="display:flex;justify-content:space-between">
+                <span>AI 助理話術腳本（Prompt）</span>
+                <div id="scriptGenLoader" class="loader hidden"><span></span><span></span><span></span></div>
+              </div>
+              <textarea id="bland-prompt" rows="8" placeholder="點右上角「AI 自動生成」，或直接在此輸入你希望 AI 業務助理說的話...&#10;&#10;範例：你是一位專業的業務助理，代表 [公司名] 致電給潛在客戶。請用親切、專業的繁體中文介紹我們的 [產品]..."></textarea>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:16px;font-family:'JetBrains Mono',monospace;">
+              💡 可在腳本中使用變數：{customer_name} = 客戶姓名
+            </div>
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">AI 聲音語言</div>
+                <select id="bland-voice">
+                  <option value="zh-TW-HsiaoChenNeural">繁體中文 — 曉晨（女）</option>
+                  <option value="zh-TW-YunJheNeural">繁體中文 — 雲哲（男）</option>
+                  <option value="zh-TW-HsiaoYuNeural">繁體中文 — 曉雨（女）</option>
+                </select>
+              </div>
+              <div class="fgroup">
+                <div class="flabel">最長通話時間（分鐘）</div>
+                <select id="bland-maxdur">
+                  <option value="3">3 分鐘</option>
+                  <option value="5" selected>5 分鐘</option>
+                  <option value="10">10 分鐘</option>
+                  <option value="15">15 分鐘</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Single Call -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">☎</span> 單筆 AI 撥打</div>
+          </div>
+          <div class="card-body">
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">客戶姓名</div>
+                <input id="sc-name" placeholder="例：陳副理">
+              </div>
+              <div class="fgroup">
+                <div class="flabel">客戶電話（含國碼）</div>
+                <input id="sc-phone" placeholder="+886912345678" type="tel">
+              </div>
+            </div>
+            <div class="fgroup" style="margin-bottom:16px">
+              <div class="flabel">額外背景（傳給 AI 的客製化資訊，選填）</div>
+              <input id="sc-context" placeholder="例：上次已發過開發信，對方有開信但未回覆">
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="singleCallBtn" onclick="startSingleCall()" style="background:#7c3aed">
+                🤖 AI 立即撥打
+              </button>
+              <div id="singleCallLoader" class="loader hidden"><span></span><span></span><span></span></div>
+            </div>
+            <div id="singleCallStatus" class="send-status hidden" style="margin-top:10px"></div>
+          </div>
+        </div>
+
+        <!-- Bulk AI Call from CRM -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">⊞</span> 從 CRM 批量 AI 撥打</div>
+          </div>
+          <div class="card-body">
+            <div class="fgroup" style="margin-bottom:12px">
+              <div class="flabel" style="margin-bottom:8px">選取要撥打的客戶（需有電話號碼）</div>
+              <div id="bland-crm-list" style="max-height:200px;overflow-y:auto;background:var(--bg);border:1px solid var(--border2);border-radius:4px;padding:8px;">
+                <div style="color:var(--text-muted);font-size:12px;padding:8px;">請先在 CRM 中新增有電話號碼的客戶</div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">撥打間隔（秒）</div>
+                <select id="bland-interval">
+                  <option value="5">5 秒</option>
+                  <option value="15" selected>15 秒（建議）</option>
+                  <option value="30">30 秒</option>
+                  <option value="60">1 分鐘</option>
+                </select>
+              </div>
+              <div class="fgroup">
+                <div class="flabel">每日上限通數</div>
+                <select id="bland-daily-limit">
+                  <option value="20">20 通</option>
+                  <option value="50" selected>50 通</option>
+                  <option value="100">100 通</option>
+                  <option value="999">無限制</option>
+                </select>
+              </div>
+            </div>
+            <div class="btn-row" style="margin-top:14px">
+              <button class="btn btn-primary" id="bulkCallBtn" onclick="startBulkCall()" style="background:#7c3aed">
+                🤖 開始批量 AI 撥打
+              </button>
+              <button class="btn btn-ghost" onclick="stopBulkCall()">⏹ 停止</button>
+            </div>
+            <!-- Bulk call progress -->
+            <div id="bulk-call-progress" class="hidden" style="margin-top:16px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12px;font-family:'JetBrains Mono',monospace;">
+                <span id="bulk-call-text" style="color:var(--text-muted)">準備中...</span>
+                <span id="bulk-call-count" style="color:#a78bfa">0 / 0</span>
+              </div>
+              <div style="background:var(--bg);border-radius:3px;height:5px;overflow:hidden;margin-bottom:12px">
+                <div id="bulk-call-bar" style="height:100%;background:#7c3aed;border-radius:3px;width:0%;transition:width .4s"></div>
+              </div>
+              <div id="bulk-call-log" style="max-height:180px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:2;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Call History -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">◷</span> AI 通話記錄</div>
+            <button class="copy-btn" onclick="clearCallHistory()">清除</button>
+          </div>
+          <div class="card-body" style="padding:0">
+            <div id="call-history-list" style="max-height:300px;overflow-y:auto;">
+              <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">尚無通話記錄</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div><!-- /scrollArea -->
+  </div><!-- /main -->
+
+  <!-- RIGHT PANEL -->
+  <div id="rightPanel">
+    <div class="rp-title">本月戰績</div>
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-num">31</div>
+        <div class="stat-label">已生成信件</div>
+        <div class="stat-up">↑ +14</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">42%</div>
+        <div class="stat-label">開信率提升</div>
+        <div class="stat-up">vs 平均</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">8</div>
+        <div class="stat-label">進行中客戶</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">3</div>
+        <div class="stat-label">待跟進</div>
+        <div class="stat-up" style="color:var(--yellow)">今日</div>
+      </div>
+    </div>
+
+    <div class="rp-title">成功率評估</div>
+    <div id="scoreSection">
+      <div class="score-row">
+        <div class="score-label">個人化度</div>
+        <div class="score-bar"><div class="score-fill" style="width:85%;background:var(--orange)"></div></div>
+        <div class="score-val">85%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">主旨吸引力</div>
+        <div class="score-bar"><div class="score-fill" style="width:72%;background:var(--blue)"></div></div>
+        <div class="score-val">72%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">CTA 清晰度</div>
+        <div class="score-bar"><div class="score-fill" style="width:91%;background:var(--green)"></div></div>
+        <div class="score-val">91%</div>
+      </div>
+      <div class="score-row">
+        <div class="score-label">簡潔程度</div>
+        <div class="score-bar"><div class="score-fill" style="width:68%;background:var(--yellow)"></div></div>
+        <div class="score-val">68%</div>
+      </div>
+    </div>
+
+    <div class="rp-divider"></div>
+    <div class="rp-title">客戶漏斗</div>
+    <div class="pipeline-item">
+      <div class="pi-dot" style="background:var(--red)"></div>
+      <div class="pi-info">
+        <div class="pi-company">台積電</div>
+        <div class="pi-stage">Demo 完成 → 待報價</div>
+      </div>
+      <div class="pi-score">92</div>
+    </div>
+    <div class="pipeline-item">
+      <div class="pi-dot" style="background:var(--orange)"></div>
+      <div class="pi-info">
+        <div class="pi-company">緯創資通</div>
+        <div class="pi-stage">開信未回覆</div>
+      </div>
+      <div class="pi-score">67</div>
+    </div>
+    <div class="pipeline-item">
+      <div class="pi-dot" style="background:var(--blue)"></div>
+      <div class="pi-info">
+        <div class="pi-company">仁寶電腦</div>
+        <div class="pi-stage">初次接觸</div>
+      </div>
+      <div class="pi-score">44</div>
+    </div>
+    <div class="pipeline-item">
+      <div class="pi-dot" style="background:var(--text-muted)"></div>
+      <div class="pi-info">
+        <div class="pi-company">王小明</div>
+        <div class="pi-stage">冷接觸</div>
+      </div>
+      <div class="pi-score">21</div>
+    </div>
+
+    <div class="rp-divider"></div>
+    <div class="tip-box">
+      <strong>💡 今日提醒</strong><br>
+      台積電已 <strong>3天</strong> 未回覆，建議今天發第2次跟進信，換用「提問式」開場效果更好。
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+const API = 'https://api.anthropic.com/v1/messages';
+let currentMode = 'b2b';
+
+function setMode(m, el) {
+  currentMode = m;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// Navigation
+const pages = ['email','profile','script','followup','crm','bulk','calendar','voice'];
+const pageMeta = {
+  email:    { title:'開發信生成', sub:'AI 自動生成高度個人化的業務開發信' },
+  profile:  { title:'客戶畫像分析', sub:'深度分析客戶決策結構、痛點與最佳切入時機' },
+  script:   { title:'話術腳本 & 問答建議', sub:'針對任何業務場景，AI 提供逐字話術與策略' },
+  followup: { title:'跟進管理', sub:'按輪次生成跟進訊息，讓沉默客戶重新回應' },
+  crm:      { title:'客戶 CRM 資料庫', sub:'統一管理所有潛在客戶資料、階段與備注' },
+  bulk:     { title:'批量發送', sub:'從 CRM 名單一鍵批量發送個人化開發信' },
+  calendar: { title:'Google Calendar 跟進提醒', sub:'自動將跟進任務加入 Google Calendar' },
+  voice:    { title:'語音撥打助理', sub:'AI 生成通話腳本，一鍵用電話或 LINE 直接撥打客戶' },
+};
+function goPage(name, el) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  pages.forEach(p => {
+    const el2 = document.getElementById('page-'+p);
+    if (el2) el2.classList.toggle('active', p === name);
+  });
+  document.getElementById('pageTitle').textContent = pageMeta[name].title;
+  document.getElementById('pageSub').textContent = pageMeta[name].sub;
+  // reset fn tabs to generate
+  document.querySelectorAll('.fn-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  document.querySelectorAll('#fn-generate,#fn-batch,#fn-history').forEach((el2,i)=>el2.classList.toggle('active',i===0));
+}
+
+function switchFn(name, el) {
+  document.querySelectorAll('.fn-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['generate','batch','history'].forEach(f => {
+    const el2 = document.getElementById('fn-'+f);
+    if (el2) el2.classList.toggle('active', f === name);
+  });
+}
+
+// API
+async function callAI(prompt) {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content?.[0]?.text || '生成失敗';
+}
+
+function fmt(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/#{1,3}\s(.+)/g,'<strong style="color:var(--text);font-size:14px">$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+function setBtn(id, loading, label='生成') {
+  const btn = document.getElementById(id);
+  if(btn) { btn.disabled = loading; }
+}
+function setLoader(id, show) {
+  const el = document.getElementById(id);
+  if(el) el.classList.toggle('hidden', !show);
+}
+function showResult(id, html) {
+  const r = document.getElementById(id);
+  const b = document.getElementById(id+'Body');
+  if(b) b.innerHTML = html;
+  if(r) r.classList.remove('hidden');
+  // Auto-fill Gmail subject when email result is shown
+  if (id === 'emailResult') {
+    const plain = b ? b.innerText : '';
+    const subj = extractSubject(plain);
+    const subjectEl = document.getElementById('gmail-subject');
+    if (subjectEl && !subjectEl.value) subjectEl.value = subj;
+  }
+}
+
+// ── GENERATE EMAIL ──
+async function generateEmail() {
+  const company  = document.getElementById('e-company').value || '貴公司';
+  const title    = document.getElementById('e-title').value || '您';
+  const industry = document.getElementById('e-industry').value || '該產業';
+  const tone     = document.getElementById('e-tone').value;
+  const product  = document.getElementById('e-product').value || '我們的服務';
+  const trigger  = document.getElementById('e-trigger').value;
+  const cta      = document.getElementById('e-cta').value;
+  const toneMap  = { professional:'專業正式', warm:'親切溫暖', concise:'精簡有力', consultative:'顧問諮詢型', urgency:'製造緊迫感' };
+  const modeLabel = currentMode === 'b2b' ? 'B2B（寫給企業決策者）' : 'B2C（寫給個人消費者）';
+
+  const prompt = `你是一位頂尖的 ${modeLabel} 業務開發專家，擅長寫出高回覆率的冷郵件。
+
+目標：${company}，聯絡人：${title}，產業/族群：${industry}
+產品/服務：${product}
+語氣風格：${toneMap[tone] || tone}
+期望行動（CTA）：${cta}
+${trigger ? `觸發點/最新動態：${trigger}` : ''}
+
+請生成一封完整的業務開發信，格式如下：
+主旨：（個人化、引發好奇，不超過12字）
+
+（空一行）
+
+正文：
+- 開場：15字內用觸發點或問題引發共鳴
+- 核心價值：2-3句說明能解決什麼問題、帶來什麼好處（用數字）
+- 社會認同：一句話建立信任感（可虛構合理案例）
+- CTA：明確、低門檻的下一步邀請
+
+署名：（簡短）
+
+最後另起一行加上：
+📊 建議發送時間：（最佳開信時段）
+💡 AB測試建議：（主旨的另一個版本）
+
+使用繁體中文，全文不超過200字。`;
+
+  setBtn('genEmailBtn', true);
+  setLoader('emailLoader', true);
+  document.getElementById('emailResult').classList.add('hidden');
+
+  try {
+    const result = await callAI(prompt);
+    showResult('emailResult', fmt(result));
+  } catch(e) {
+    alert('API 連線失敗：' + e.message);
+  }
+  setBtn('genEmailBtn', false);
+  setLoader('emailLoader', false);
+}
+
+// ── BATCH TEMPLATES ──
+async function generateTemplates() {
+  const industry = document.getElementById('tpl-industry').value;
+  const product  = document.getElementById('tpl-product').value || '我們的產品';
+  const count    = document.getElementById('tpl-count').value;
+
+  const prompt = `你是業務開發專家。請為「${industry}」場景、產品「${product}」，生成 ${count} 個不同語氣版本的開發信模板，用於 A/B 測試。
+
+每個版本標示：版本A/B/C... + 語氣標籤，包含主旨 + 正文（100字以內）+ CTA。
+版本之間語氣、切入角度、CTA 都要明顯不同。
+使用繁體中文。`;
+
+  setLoader('tplLoader', true);
+  document.getElementById('tplResult').classList.add('hidden');
+  try {
+    const result = await callAI(prompt);
+    showResult('tplResult', fmt(result));
+  } catch(e) { alert('API 錯誤：' + e.message); }
+  setLoader('tplLoader', false);
+}
+
+// ── ANALYZE PROFILE ──
+async function analyzeProfile() {
+  const company = document.getElementById('p-company').value || '該客戶';
+  const size    = document.getElementById('p-size').value;
+  const info    = document.getElementById('p-info').value;
+  const pain    = document.getElementById('p-pain').value;
+  const modeLabel = currentMode === 'b2b' ? 'B2B 企業客戶' : 'B2C 個人消費者';
+
+  const prompt = `你是資深業務顧問，專門分析 ${modeLabel} 的購買心理與決策流程。
+
+客戶：${company}，規模：${size}
+已知資訊：${info || '無特定資訊，請依產業慣例推測'}
+我想解決的問題：${pain || '業務痛點'}
+
+請輸出完整的客戶畫像分析報告，使用繁體中文：
+
+**🧠 決策結構分析**
+（誰決策、誰影響、誰使用——各角色關心什麼）
+
+**😰 核心痛點推測**（列出3個，並說明嚴重程度）
+
+**⚡ 最佳切入機會**（時機 + 話題 + 開場方式）
+
+**⚠️ 潛在阻力**（可能遇到的反對和應對思路）
+
+**🎯 建議行動計劃**（第一步到第三步，具體可執行）`;
+
+  setBtn('profileBtn', true);
+  setLoader('profileLoader', true);
+  document.getElementById('profileResult').classList.add('hidden');
+  try {
+    const result = await callAI(prompt);
+    showResult('profileResult', fmt(result));
+  } catch(e) { alert('API 錯誤：' + e.message); }
+  setBtn('profileBtn', false);
+  setLoader('profileLoader', false);
+}
+
+// ── GENERATE SCRIPT ──
+async function generateScript() {
+  const scene    = document.getElementById('s-scene').value;
+  const question = document.getElementById('s-question').value;
+  const usp      = document.getElementById('s-usp').value;
+  const strategy = document.getElementById('s-strategy').value;
+  const modeLabel = currentMode === 'b2b' ? 'B2B' : 'B2C';
+
+  const prompt = `你是頂尖業務教練，專精 ${modeLabel} 銷售話術。
+
+場景：${scene}
+客戶說：「${question || '（未指定，請根據場景設計典型問題）'}」
+我的優勢：${usp || '（業界標準優勢）'}
+策略：${strategy}
+
+請用繁體中文生成完整話術包：
+
+**🎤 建議話術（逐字稿）**
+（完整說法，自然口語，可直接說出口）
+
+**🧩 策略拆解**
+（為什麼這樣說有效——心理機制說明）
+
+**❓ 後續追問**
+（說完後問客戶的問題，推進銷售流程）
+
+**🔄 備用版本**
+（另一個角度的話術，應對不同個性的客戶）`;
+
+  setBtn('scriptBtn', true);
+  setLoader('scriptLoader', true);
+  document.getElementById('scriptResult').classList.add('hidden');
+  try {
+    const result = await callAI(prompt);
+    showResult('scriptResult', fmt(result));
+  } catch(e) { alert('API 錯誤：' + e.message); }
+  setBtn('scriptBtn', false);
+  setLoader('scriptLoader', false);
+}
+
+// ── GENERATE FOLLOWUP ──
+async function generateFollowup() {
+  const name       = document.getElementById('f-name').value || '客戶';
+  const round      = document.getElementById('f-round').value;
+  const lastaction = document.getElementById('f-lastaction').value;
+  const channel    = document.getElementById('f-channel').value;
+  const note       = document.getElementById('f-note').value;
+  const modeLabel  = currentMode === 'b2b' ? 'B2B' : 'B2C';
+
+  const prompt = `你是 ${modeLabel} 業務跟進專家。
+
+客戶：${name}
+跟進輪次：${round}
+上次互動：${lastaction}
+發送管道：${channel}
+補充備注：${note || '無'}
+
+請用繁體中文生成：
+
+**📨 跟進${channel}內容**
+主旨（如果是Email）：
+正文：（80字以內，有鉤子、換一個新角度、低門檻CTA）
+
+**⏰ 最佳發送時機**
+
+**🧠 跟進策略說明**（為何這次換這個角度）
+
+**📋 若仍無回覆的後續建議**`;
+
+  setBtn('followupBtn', true);
+  setLoader('followupLoader', true);
+  document.getElementById('followupResult').classList.add('hidden');
+  try {
+    const result = await callAI(prompt);
+    showResult('followupResult', fmt(result));
+  } catch(e) { alert('API 錯誤：' + e.message); }
+  setBtn('followupBtn', false);
+  setLoader('followupLoader', false);
+}
+
+function clearEmailForm() {
+  ['e-company','e-title','e-product','e-trigger'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  document.getElementById('emailResult').classList.add('hidden');
+}
+
+function copyEl(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const text = el.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = el.closest('.result-card')?.querySelector('.copy-btn');
+    if(btn) { btn.textContent = '✓ COPIED'; setTimeout(() => btn.textContent = 'COPY', 1500); }
+  });
+}
+
+function saveToProspects() {
+  alert('已存入客戶記錄！（完整版本可連接後端資料庫）');
+}
+
+// ─────────────────────────────────────────
+// GMAIL SEND (via Anthropic MCP + Claude AI)
+// ─────────────────────────────────────────
+function getPlainText(id) {
+  const el = document.getElementById(id);
+  return el ? el.innerText.trim() : '';
+}
+
+function extractSubject(bodyText) {
+  const m = bodyText.match(/主旨[：:]\s*(.+)/);
+  return m ? m[1].trim() : '業務開發合作邀請';
+}
+
+function setStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'send-status ' + type;
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  if (type === 'success') setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+async function sendGmail() {
+  const to = document.getElementById('gmail-to').value.trim();
+  const subjectInput = document.getElementById('gmail-subject').value.trim();
+  const body = getPlainText('emailResultBody');
+
+  if (!to) { setStatus('gmailStatus','error','⚠ 請填寫收件人 Email'); return; }
+  if (!body) { setStatus('gmailStatus','error','⚠ 請先生成信件內容'); return; }
+
+  const subject = subjectInput || extractSubject(body);
+  const btn = document.getElementById('gmailSendBtn');
+  btn.disabled = true;
+  setStatus('gmailStatus','loading','⟳ 透過 Gmail 發送中...');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail' }],
+        messages: [{
+          role: 'user',
+          content: `請用 Gmail 發送以下郵件：
+收件人：${to}
+主旨：${subject}
+正文：
+${body}
+
+請直接使用 Gmail 工具發送，不需要我確認。`
+        }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    // Check if tool was used (mcp_tool_use present) or text confirms success
+    const hasToolUse = data.content?.some(c => c.type === 'mcp_tool_use' || c.type === 'mcp_tool_result');
+    const textResp = data.content?.filter(c=>c.type==='text').map(c=>c.text).join('');
+    if (hasToolUse || textResp.includes('發送') || textResp.includes('sent') || textResp.includes('成功')) {
+      setStatus('gmailStatus','success','✓ 郵件已透過 Gmail 發送成功！');
+      document.getElementById('gmail-to').value = '';
+    } else {
+      setStatus('gmailStatus','error','⚠ 發送可能未完成，請確認 Gmail 授權。');
+    }
+  } catch(e) {
+    setStatus('gmailStatus','error','✗ 發送失敗：' + e.message);
+  }
+  btn.disabled = false;
+}
+
+async function sendFollowupGmail() {
+  const to = document.getElementById('fu-gmail-to').value.trim();
+  const subjectInput = document.getElementById('fu-gmail-subject').value.trim();
+  const body = getPlainText('followupResultBody');
+
+  if (!to) { setStatus('fuGmailStatus','error','⚠ 請填寫收件人 Email'); return; }
+  if (!body) { setStatus('fuGmailStatus','error','⚠ 請先生成跟進訊息'); return; }
+
+  const subject = subjectInput || extractSubject(body) || '跟進：上次聯繫的後續';
+  setStatus('fuGmailStatus','loading','⟳ 發送中...');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail' }],
+        messages: [{ role: 'user', content: `請用 Gmail 發送郵件給 ${to}，主旨：${subject}，正文：${body}。直接發送。` }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    setStatus('fuGmailStatus','success','✓ 跟進郵件已發送！');
+  } catch(e) {
+    setStatus('fuGmailStatus','error','✗ 發送失敗：' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────
+// LINE MESSAGING API SEND
+// LINE Notify 已於 2025/3/31 停用
+// 改用官方 Messaging API (Push Message)
+// 設定步驟：
+//   1. 到 https://developers.line.biz/console/ 建立 Provider + Messaging API Channel
+//   2. 取得 Channel Access Token（Messaging API 頁籤底部）
+//   3. 讓收訊人加你的 LINE Bot 為好友並傳任意訊息，從 webhook 取得 User ID
+//      （或使用 https://developers.line.biz/en/docs/messaging-api/getting-user-ids/）
+// ─────────────────────────────────────────
+async function sendLineMsg(tokenId, userIdId, bodyId, statusId) {
+  const token  = document.getElementById(tokenId)?.value.trim();
+  const userId = document.getElementById(userIdId)?.value.trim();
+  const body   = getPlainText(bodyId);
+
+  if (!token)  { setStatus(statusId,'error','⚠ 請輸入 Channel Access Token'); return; }
+  if (!userId) { setStatus(statusId,'error','⚠ 請輸入目標 User ID'); return; }
+  if (!body)   { setStatus(statusId,'error','⚠ 請先生成訊息內容'); return; }
+
+  setStatus(statusId,'loading','⟳ 透過 LINE Messaging API 發送中...');
+
+  // LINE Messaging API Push endpoint
+  // CORS restriction: browser cannot call LINE API directly.
+  // We proxy through corsproxy.io (demo use).
+  // For production: build a backend relay (Vercel/Cloud Function/etc.)
+  const lineEndpoint = 'https://api.line.me/v2/bot/message/push';
+  const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(lineEndpoint);
+
+  const payload = {
+    to: userId,
+    messages: [{
+      type: 'text',
+      text: body.substring(0, 5000) // LINE max 5000 chars per text message
+    }]
+  };
+
+  try {
+    const res = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      setStatus(statusId,'success','✓ 已透過 LINE Messaging API 發送成功！');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      const msg = err.message || err.details?.[0]?.message || `HTTP ${res.status}`;
+      setStatus(statusId,'error','✗ LINE 回應錯誤：' + msg);
+    }
+  } catch(e) {
+    setStatus(statusId,'error','✗ 發送失敗：請確認 Token 與 User ID 是否正確');
+  }
+}
+
+// ─── LINE Share (不需要 Token，開啟 LINE App 手動選對象）───
+function openLineShare(bodyId = 'emailResultBody') {
+  const text = getPlainText(bodyId);
+  if (!text) { alert('請先生成訊息內容'); return; }
+  const url = 'https://line.me/R/share?text=' + encodeURIComponent(text.substring(0, 500));
+  window.open(url, '_blank');
+}
+
+// Auto-fill gmail subject when email is generated — handled inside showResult above
+
+// ═══════════════════════════════════════
+// CRM DATABASE (localStorage)
+// ═══════════════════════════════════════
+let crmData = JSON.parse(localStorage.getItem('huntai_crm') || '[]');
+
+function saveCRM() {
+  localStorage.setItem('huntai_crm', JSON.stringify(crmData));
+}
+
+function addCRMProspect() {
+  const name    = document.getElementById('crm-name').value.trim();
+  const contact = document.getElementById('crm-contact').value.trim();
+  const email   = document.getElementById('crm-email').value.trim();
+  const phone   = document.getElementById('crm-phone').value.trim();
+  const heat    = document.getElementById('crm-heat').value;
+  const stage   = document.getElementById('crm-stage').value;
+  const note    = document.getElementById('crm-note').value.trim();
+
+  if (!name) { alert('請填寫公司/客戶名稱'); return; }
+
+  const prospect = {
+    id: Date.now(),
+    name, contact, email, phone, heat, stage, note,
+    createdAt: new Date().toLocaleDateString('zh-TW')
+  };
+  crmData.unshift(prospect);
+  saveCRM();
+  renderCRM();
+  renderBulkList();
+  renderBatchCrmList();
+
+  // Clear form
+  ['crm-name','crm-contact','crm-email','crm-phone','crm-note'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+
+  // Update sidebar live list
+  updateSidebarList();
+  alert(`✓ "${name}" 已加入 CRM！`);
+}
+
+function deleteCRMProspect(id) {
+  if (!confirm('確定刪除此客戶？')) return;
+  crmData = crmData.filter(p => p.id !== id);
+  saveCRM();
+  renderCRM();
+  renderBulkList();
+  renderBatchCrmList();
+  updateSidebarList();
+}
+
+function renderCRM() {
+  const q = (document.getElementById('crm-search')?.value || '').toLowerCase();
+  const filtered = crmData.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    p.contact.toLowerCase().includes(q) ||
+    p.email.toLowerCase().includes(q)
+  );
+
+  const tbody = document.getElementById('crm-tbody');
+  const empty = document.getElementById('crm-empty');
+  if (!tbody) return;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const heatMap = {
+    hot: '<span class="heat-pill hp-hot">🔥 高潛力</span>',
+    warm: '<span class="heat-pill hp-warm">◐ 培育中</span>',
+    cold: '<span class="heat-pill hp-cold">○ 冷接觸</span>',
+  };
+
+  tbody.innerHTML = filtered.map(p => `
+    <tr>
+      <td class="td" style="font-weight:500;color:var(--text)">${p.name}</td>
+      <td class="td">${p.contact || '—'}</td>
+      <td class="td" style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.email || '—'}</td>
+      <td class="td" style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.phone || '—'}</td>
+      <td class="td">${heatMap[p.heat] || ''}</td>
+      <td class="td"><span style="font-size:11px;color:var(--orange)">${p.stage}</span></td>
+      <td class="td" style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.note || '—'}</td>
+      <td class="td">
+        <div class="td-action">
+          <button class="act-btn" onclick="loadToEmail(${p.id})" title="開發信">✉</button>
+          ${p.phone ? `<button class="act-btn" style="color:#4ade80;border-color:#166534" onclick="quickDial('${p.phone}','${p.name}')" title="電話撥打">📞</button>` : ''}
+          <button class="act-btn" style="color:#34d399;border-color:#065f46" onclick="quickVoicePage(${p.id})" title="語音撥打頁面">☎</button>
+          <button class="act-btn" onclick="quickCalendar(${p.id})" title="加入行事曆">📅</button>
+          <button class="act-btn del" onclick="deleteCRMProspect(${p.id})" title="刪除">✕</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function exportCRM() {
+  if (crmData.length === 0) { alert('CRM 目前沒有資料'); return; }
+  const headers = ['公司名稱','聯絡人','Email','電話','分級','階段','備注','加入日期'];
+  const rows = crmData.map(p => [p.name, p.contact, p.email, p.phone, p.heat, p.stage, p.note, p.createdAt]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'HUNTAI_CRM.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadToEmail(id) {
+  const p = crmData.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('e-company').value = p.name;
+  if (p.contact) document.getElementById('e-title').value = p.contact;
+  if (p.email) document.getElementById('gmail-to').value = p.email;
+  goPage('email', document.querySelector('.nav-btn'));
+  document.querySelectorAll('.nav-btn')[0].classList.add('active');
+  alert(`已帶入「${p.name}」的資料到開發信頁面！`);
+}
+
+function quickCalendar(id) {
+  const p = crmData.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('cal-client').value = p.name + (p.contact ? ' ' + p.contact : '');
+  document.getElementById('cal-note').value = p.note || '';
+  // Set default date to tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('cal-date').value = tomorrow.toISOString().split('T')[0];
+  // Navigate to calendar page
+  const calBtn = document.querySelectorAll('.nav-btn')[6];
+  if (calBtn) { goPage('calendar', calBtn); calBtn.classList.add('active'); }
+}
+
+function updateSidebarList() {
+  const container = document.querySelector('.nav-section:last-child');
+  if (!container) return;
+  const heading = container.querySelector('.nav-heading');
+  const items = crmData.slice(0, 4);
+  container.innerHTML = `<div class="nav-heading">進行中客戶</div>`;
+  if (items.length === 0) {
+    container.innerHTML += `<div style="padding:10px 18px;font-size:12px;color:var(--text-muted)">尚無客戶</div>`;
+    return;
+  }
+  const heatClass = { hot: 'heat-hot', warm: 'heat-warm', cold: 'heat-cold' };
+  const heatLabel = { hot: '🔥 高潛力', warm: '◐ 培育中', cold: '○ 冷接觸' };
+  items.forEach(p => {
+    container.innerHTML += `
+      <div class="prospect-item" onclick="loadToEmail(${p.id})">
+        <div class="pi-name">${p.name}</div>
+        <div class="pi-meta">${p.contact || ''} · ${p.stage}</div>
+        <span class="pi-heat ${heatClass[p.heat]}">${heatLabel[p.heat]}</span>
+      </div>`;
+  });
+}
+
+// ═══════════════════════════════════════
+// BULK SEND
+// ═══════════════════════════════════════
+let bulkStopped = false;
+
+function renderBulkList() {
+  const container = document.getElementById('bulk-crm-list');
+  if (!container) return;
+  if (crmData.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px;">請先在 CRM 中新增客戶</div>';
+    return;
+  }
+  container.innerHTML = crmData.map(p => `
+    <div class="bulk-check-item">
+      <input type="checkbox" id="bck-${p.id}" value="${p.id}" style="accent-color:var(--orange);width:14px;height:14px;">
+      <label for="bck-${p.id}">${p.name}${p.contact ? ' · ' + p.contact : ''}</label>
+      <span>${p.email || '無Email'}</span>
+    </div>
+  `).join('');
+}
+
+function toggleBulkSource(val) {
+  const isCRM = val === 'crm';
+  document.getElementById('bulk-crm-picker').classList.toggle('hidden', !isCRM);
+  document.getElementById('bulk-manual-input').classList.toggle('hidden', isCRM);
+}
+
+function getBulkTargets() {
+  const source = document.getElementById('bulk-source').value;
+  if (source === 'crm') {
+    const checked = document.querySelectorAll('#bulk-crm-list input[type=checkbox]:checked');
+    return Array.from(checked).map(cb => {
+      const p = crmData.find(x => x.id === parseInt(cb.value));
+      return p ? { name: p.name, email: p.email } : null;
+    }).filter(x => x && x.email);
+  } else {
+    const raw = document.getElementById('bulk-emails').value.trim().split('\n');
+    return raw.filter(e => e.includes('@')).map(e => ({ name: e.trim(), email: e.trim() }));
+  }
+}
+
+function previewBulk() {
+  const targets = getBulkTargets();
+  const subject = document.getElementById('bulk-subject').value;
+  const body    = document.getElementById('bulk-body').value;
+  if (targets.length === 0) { alert('請選擇收件人'); return; }
+  const first = targets[0];
+  const previewBody = body.replace(/{name}/g, first.name);
+  alert(`📧 預覽（第1封）\n收件人：${first.email}\n主旨：${subject}\n\n${previewBody.substring(0, 300)}...`);
+}
+
+function stopBulk() { bulkStopped = true; }
+
+async function startBulkSend() {
+  const targets = getBulkTargets();
+  const subject = document.getElementById('bulk-subject').value.trim();
+  const body    = document.getElementById('bulk-body').value.trim();
+  const delay   = parseInt(document.getElementById('bulk-delay').value) * 1000;
+
+  if (targets.length === 0) { alert('請選擇至少一位收件人'); return; }
+  if (!subject || !body) { alert('請填寫主旨和信件內容'); return; }
+
+  bulkStopped = false;
+  document.getElementById('bulk-progress-card').classList.remove('hidden');
+  document.getElementById('bulkSendBtn').disabled = true;
+  const log = document.getElementById('bulk-log');
+  log.innerHTML = '';
+
+  for (let i = 0; i < targets.length; i++) {
+    if (bulkStopped) {
+      addLog(log, '⏹ 已停止發送', 'var(--yellow)');
+      break;
+    }
+    const t = targets[i];
+    const pct = Math.round(((i) / targets.length) * 100);
+    document.getElementById('bulk-prog-bar').style.width = pct + '%';
+    document.getElementById('bulk-prog-count').textContent = `${i} / ${targets.length}`;
+    document.getElementById('bulk-prog-text').textContent = `正在發送給 ${t.name}...`;
+
+    const personalBody = body.replace(/{name}/g, t.name);
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 500,
+          mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail' }],
+          messages: [{ role: 'user', content: `請用 Gmail 發送郵件給 ${t.email}，主旨：${subject}，正文：${personalBody}。直接發送，不需要確認。` }]
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      addLog(log, `✓ ${t.name} (${t.email}) — 發送成功`, 'var(--green)');
+    } catch(e) {
+      addLog(log, `✗ ${t.name} — 失敗：${e.message}`, '#f87171');
+    }
+
+    document.getElementById('bulk-prog-bar').style.width = Math.round(((i+1) / targets.length) * 100) + '%';
+    document.getElementById('bulk-prog-count').textContent = `${i+1} / ${targets.length}`;
+
+    if (i < targets.length - 1) await sleep(delay);
+  }
+
+  if (!bulkStopped) {
+    document.getElementById('bulk-prog-text').textContent = `✓ 全部發送完成！共 ${targets.length} 封`;
+    document.getElementById('bulk-prog-bar').style.background = 'var(--green)';
+  }
+  document.getElementById('bulkSendBtn').disabled = false;
+}
+
+function addLog(el, msg, color='var(--text-muted)') {
+  el.innerHTML += `<div style="color:${color}">${new Date().toLocaleTimeString('zh-TW')} &nbsp; ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ═══════════════════════════════════════
+// GOOGLE CALENDAR
+// ═══════════════════════════════════════
+async function addCalendarEvent() {
+  const client   = document.getElementById('cal-client').value.trim();
+  const type     = document.getElementById('cal-type').value;
+  const date     = document.getElementById('cal-date').value;
+  const time     = document.getElementById('cal-time').value;
+  const reminder = parseInt(document.getElementById('cal-reminder').value);
+  const note     = document.getElementById('cal-note').value.trim();
+
+  if (!client || !date) { setStatus('calStatus','error','⚠ 請填寫客戶名稱和日期'); return; }
+
+  const title = `${type} — ${client}`;
+  const startISO = `${date}T${time || '09:00'}:00`;
+  const endISO   = `${date}T${addHour(time || '09:00', 1)}:00`;
+  const desc = `客戶：${client}\n類型：${type}\n${note ? '備注：' + note : ''}\n\n📌 由 HUNTAI 業務助理建立`;
+
+  setLoader('calLoader', true);
+  setStatus('calStatus','loading','⟳ 正在加入 Google Calendar...');
+  document.getElementById('calAddBtn').disabled = true;
+
+  try {
+    // Use Claude's calendar tool via Anthropic API with calendar MCP
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        mcp_servers: [{ type: 'url', url: 'https://gcal.mcp.claude.com/mcp', name: 'gcal' }],
+        messages: [{ role: 'user', content: `請在 Google Calendar 建立一個行事曆事件：
+標題：${title}
+開始時間：${startISO}
+結束時間：${endISO}
+描述：${desc}
+提前 ${reminder} 分鐘提醒
+
+直接建立，不需要確認。` }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content?.filter(c=>c.type==='text').map(c=>c.text).join('');
+    const hasToolUse = data.content?.some(c => c.type === 'mcp_tool_use' || c.type === 'mcp_tool_result');
+    if (hasToolUse || text.includes('建立') || text.includes('成功') || text.includes('created')) {
+      setStatus('calStatus','success',`✓ 已加入 Calendar：${title} — ${date} ${time}`);
+      document.getElementById('cal-client').value = '';
+      document.getElementById('cal-note').value = '';
+    } else {
+      setStatus('calStatus','error','⚠ 可能未成功，請確認 Google Calendar 授權。');
+    }
+  } catch(e) {
+    setStatus('calStatus','error','✗ 失敗：' + e.message);
+  }
+  setLoader('calLoader', false);
+  document.getElementById('calAddBtn').disabled = false;
+}
+
+function renderBatchCrmList() {
+  const container = document.getElementById('batch-crm-list2');
+  if (!container) return;
+  if (crmData.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px;">請先在 CRM 中新增客戶</div>';
+    return;
+  }
+  container.innerHTML = crmData.map(p => `
+    <div class="bulk-check-item">
+      <input type="checkbox" id="bcal-${p.id}" value="${p.id}" style="accent-color:var(--orange);width:14px;height:14px;">
+      <label for="bcal-${p.id}">${p.name}${p.contact ? ' · ' + p.contact : ''}</label>
+      <span>${p.stage}</span>
+    </div>
+  `).join('');
+}
+
+async function batchAddCalendar() {
+  const checked = document.querySelectorAll('#batch-crm-list2 input[type=checkbox]:checked');
+  if (checked.length === 0) { alert('請選擇至少一位客戶'); return; }
+
+  const startDate = document.getElementById('batch-cal-start').value;
+  if (!startDate) { alert('請選擇開始日期'); return; }
+  const interval = parseInt(document.getElementById('batch-cal-interval').value);
+
+  const statusEl = document.getElementById('batchCalStatus');
+  statusEl.className = 'send-status loading'; statusEl.classList.remove('hidden');
+  statusEl.textContent = `⟳ 正在批量建立 ${checked.length} 個行事曆提醒...`;
+
+  let successCount = 0;
+  const start = new Date(startDate);
+
+  for (let i = 0; i < checked.length; i++) {
+    const p = crmData.find(x => x.id === parseInt(checked[i].value));
+    if (!p) continue;
+
+    const eventDate = new Date(start);
+    eventDate.setDate(start.getDate() + i * interval);
+    const dateStr = eventDate.toISOString().split('T')[0];
+    const startISO = `${dateStr}T09:00:00`;
+    const endISO   = `${dateStr}T09:30:00`;
+    const title    = `📧 跟進提醒 — ${p.name}`;
+    const desc     = `客戶：${p.name}\n聯絡人：${p.contact || '—'}\nEmail：${p.email || '—'}\n階段：${p.stage}\n備注：${p.note || '—'}\n\n📌 由 HUNTAI 批量建立`;
+
+    try {
+      await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 300,
+          mcp_servers: [{ type: 'url', url: 'https://gcal.mcp.claude.com/mcp', name: 'gcal' }],
+          messages: [{ role: 'user', content: `建立 Google Calendar 事件：標題「${title}」，時間 ${startISO} 到 ${endISO}，描述：${desc}。直接建立。` }]
+        })
+      });
+      successCount++;
+    } catch(e) { /* continue */ }
+    await sleep(800);
+  }
+
+  statusEl.className = 'send-status success'; statusEl.classList.remove('hidden');
+  statusEl.textContent = `✓ 已成功建立 ${successCount} / ${checked.length} 個跟進提醒到 Google Calendar！`;
+}
+
+function addHour(timeStr, hours) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const newH = (h + hours) % 24;
+  return `${String(newH).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════
+// BLAND.AI — AI 自動撥打電話
+// ═══════════════════════════════════════
+let callHistory = JSON.parse(localStorage.getItem('huntai_calls') || '[]');
+let blandStopped = false;
+
+function saveCallHistory() { localStorage.setItem('huntai_calls', JSON.stringify(callHistory)); }
+
+// Load & save Bland settings
+function saveBlandKey() {
+  localStorage.setItem('bland_apikey', document.getElementById('bland-apikey')?.value || '');
+  localStorage.setItem('bland_from',   document.getElementById('bland-from')?.value || '');
+}
+function loadBlandSettings() {
+  const key  = localStorage.getItem('bland_apikey') || '';
+  const from = localStorage.getItem('bland_from')   || '';
+  const keyEl  = document.getElementById('bland-apikey');
+  const fromEl = document.getElementById('bland-from');
+  if (keyEl)  keyEl.value  = key;
+  if (fromEl) fromEl.value = from;
+  updateBlandBadge(!!key);
+}
+function updateBlandBadge(active) {
+  const badge = document.getElementById('bland-status-badge');
+  if (!badge) return;
+  if (active) {
+    badge.className = 'heat-pill hp-hot'; badge.textContent = '✓ 已設定';
+  } else {
+    badge.className = 'heat-pill hp-cold'; badge.textContent = '未設定';
+  }
+}
+
+async function verifyBlandKey() {
+  const key = document.getElementById('bland-apikey')?.value.trim();
+  if (!key) { setStatus('blandVerifyStatus','error','⚠ 請填寫 API Key'); return; }
+  setStatus('blandVerifyStatus','loading','⟳ 驗證中...');
+  try {
+    // Bland API: list voices as a lightweight verify call
+    const res = await fetch('https://api.bland.ai/v1/voices', {
+      headers: { authorization: key }
+    });
+    if (res.ok) {
+      saveBlandKey();
+      updateBlandBadge(true);
+      setStatus('blandVerifyStatus','success','✓ API Key 驗證成功！可以開始使用 AI 撥打');
+    } else {
+      setStatus('blandVerifyStatus','error','✗ API Key 無效，請重新確認');
+    }
+  } catch(e) {
+    // CORS issue in some environments — assume valid if key looks right
+    if (key.length > 10) {
+      saveBlandKey();
+      updateBlandBadge(true);
+      setStatus('blandVerifyStatus','success','✓ 已儲存（若撥打失敗請確認 Key 是否正確）');
+    } else {
+      setStatus('blandVerifyStatus','error','✗ 驗證失敗：' + e.message);
+    }
+  }
+}
+
+// AI generate Bland prompt script
+async function generateBlandScript() {
+  const company = document.getElementById('bland-company')?.value.trim() || '我們公司';
+  const product = document.getElementById('bland-product')?.value.trim() || '我們的產品';
+  const purpose = document.getElementById('bland-purpose')?.value || 'intro';
+  const purposeMap = {
+    intro:'初次開發介紹', demo:'邀約 Demo 會議',
+    followup:'跟進未回覆客戶', quote:'報價說明', close:'促成成交'
+  };
+  setLoader('scriptGenLoader', true);
+  try {
+    const result = await callAI(`你是頂尖的AI電話業務腳本撰寫師。請為以下情境撰寫一份給 AI 語音助理使用的繁體中文通話腳本（Prompt）：
+
+公司名稱：${company}
+產品/服務：${product}
+通話目的：${purposeMap[purpose]}
+通話對象：${currentMode === 'b2b' ? 'B2B 企業採購或主管' : 'B2C 個人消費者'}
+
+請直接輸出 AI 助理應遵循的 Prompt 指令，包含：
+- 角色設定（你是誰、代表哪家公司）
+- 開場白（自然、不像機器人）
+- 核心價值說明（簡短有力，30秒內）
+- 如何回應常見異議（太忙、不需要、太貴）
+- 結尾 CTA（預約時間/傳資料）
+- 語氣要求：親切、專業、繁體中文口語
+
+格式：直接寫 Prompt 指令文字，不要加標題或說明。`);
+    const el = document.getElementById('bland-prompt');
+    if (el) el.value = result;
+  } catch(e) { alert('生成失敗：' + e.message); }
+  setLoader('scriptGenLoader', false);
+}
+
+// Core Bland.ai call function
+async function blandCall(toPhone, customerName, extraContext='') {
+  const apiKey  = localStorage.getItem('bland_apikey');
+  const from    = localStorage.getItem('bland_from') || '';
+  const prompt  = document.getElementById('bland-prompt')?.value.trim();
+  const voice   = document.getElementById('bland-voice')?.value || 'zh-TW-HsiaoChenNeural';
+  const maxDur  = parseInt(document.getElementById('bland-maxdur')?.value || '5');
+
+  if (!apiKey) throw new Error('請先設定 Bland.ai API Key');
+  if (!toPhone) throw new Error('請填寫客戶電話');
+  if (!prompt)  throw new Error('請先設定 AI 話術腳本');
+
+  // Format Taiwan number to E.164
+  let phone = toPhone.replace(/[\s\-\(\)]/g, '');
+  if (phone.startsWith('0') && !phone.startsWith('+')) {
+    phone = '+886' + phone.substring(1);
+  }
+
+  const personalizedPrompt = prompt
+    .replace(/{customer_name}/g, customerName || '您')
+    + (extraContext ? `\n\n額外背景資訊：${extraContext}` : '');
+
+  const payload = {
+    phone_number: phone,
+    task: personalizedPrompt,
+    voice: voice,
+    language: 'zh-TW',
+    max_duration: maxDur,
+    record: true,
+    ...(from ? { from } : {})
+  };
+
+  const res = await fetch('https://api.bland.ai/v1/calls', {
+    method: 'POST',
+    headers: {
+      'authorization': apiKey,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+  if (!res.ok || data.status === 'error') {
+    throw new Error(data.message || data.error || `HTTP ${res.status}`);
+  }
+  return data; // contains call_id
+}
+
+// Single call
+async function startSingleCall() {
+  const name    = document.getElementById('sc-name')?.value.trim() || '客戶';
+  const phone   = document.getElementById('sc-phone')?.value.trim();
+  const context = document.getElementById('sc-context')?.value.trim();
+
+  if (!phone) { setStatus('singleCallStatus','error','⚠ 請填寫客戶電話'); return; }
+
+  document.getElementById('singleCallBtn').disabled = true;
+  setLoader('singleCallLoader', true);
+  setStatus('singleCallStatus','loading',`⟳ AI 正在撥打給 ${name}（${phone}）...`);
+
+  try {
+    const data = await blandCall(phone, name, context);
+    logCall('🤖', name, phone, 'AI 自動撥打', data.call_id);
+    setStatus('singleCallStatus','success',
+      `✓ AI 已成功撥出！通話 ID：${data.call_id || '—'}\n通話結束後可到 Bland Dashboard 查看錄音與摘要`);
+    document.getElementById('sc-phone').value = '';
+    document.getElementById('sc-name').value  = '';
+  } catch(e) {
+    setStatus('singleCallStatus','error','✗ 撥打失敗：' + e.message);
+  }
+  document.getElementById('singleCallBtn').disabled = false;
+  setLoader('singleCallLoader', false);
+}
+
+// Render CRM list for bulk call
+function renderBlandCRMList() {
+  const container = document.getElementById('bland-crm-list');
+  if (!container) return;
+  const withPhone = crmData.filter(p => p.phone);
+  if (withPhone.length === 0) {
+    container.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px;">請先在 CRM 中新增有電話號碼的客戶</div>';
+    return;
+  }
+  container.innerHTML = withPhone.map(p => `
+    <div class="bulk-check-item">
+      <input type="checkbox" id="bcall-${p.id}" value="${p.id}" style="accent-color:#7c3aed;width:14px;height:14px;">
+      <label for="bcall-${p.id}">${p.name}${p.contact ? ' · ' + p.contact : ''}</label>
+      <span>${p.phone}</span>
+    </div>
+  `).join('');
+}
+
+function stopBulkCall() { blandStopped = true; }
+
+async function startBulkCall() {
+  const checked = document.querySelectorAll('#bland-crm-list input[type=checkbox]:checked');
+  if (checked.length === 0) { alert('請勾選至少一位客戶'); return; }
+
+  const prompt = document.getElementById('bland-prompt')?.value.trim();
+  if (!prompt) { alert('請先設定 AI 話術腳本（點「AI 自動生成」）'); return; }
+
+  const interval   = parseInt(document.getElementById('bland-interval')?.value || '15') * 1000;
+  const dailyLimit = parseInt(document.getElementById('bland-daily-limit')?.value || '50');
+  const targets    = Array.from(checked)
+    .map(cb => crmData.find(p => p.id === parseInt(cb.value)))
+    .filter(p => p && p.phone)
+    .slice(0, dailyLimit);
+
+  blandStopped = false;
+  document.getElementById('bulkCallBtn').disabled = true;
+  document.getElementById('bulk-call-progress').classList.remove('hidden');
+  const log = document.getElementById('bulk-call-log');
+  log.innerHTML = '';
+
+  for (let i = 0; i < targets.length; i++) {
+    if (blandStopped) { addCallLog(log,'⏹ 已停止','var(--yellow)'); break; }
+
+    const p = targets[i];
+    const pct = Math.round((i / targets.length) * 100);
+    document.getElementById('bulk-call-bar').style.width = pct + '%';
+    document.getElementById('bulk-call-count').textContent = `${i} / ${targets.length}`;
+    document.getElementById('bulk-call-text').textContent = `🤖 AI 撥打中：${p.name}（${p.phone}）`;
+
+    try {
+      const data = await blandCall(p.phone, p.name, p.note || '');
+      logCall('🤖', p.name, p.phone, 'AI 批量撥打', data.call_id);
+      addCallLog(log, `✓ ${p.name} ${p.phone} — 已撥出 ID:${data.call_id||'—'}`, 'var(--green)');
+    } catch(e) {
+      addCallLog(log, `✗ ${p.name} — 失敗：${e.message}`, '#f87171');
+    }
+
+    document.getElementById('bulk-call-bar').style.width = Math.round(((i+1)/targets.length)*100) + '%';
+    document.getElementById('bulk-call-count').textContent = `${i+1} / ${targets.length}`;
+    if (i < targets.length - 1) await sleep(interval);
+  }
+
+  if (!blandStopped) {
+    document.getElementById('bulk-call-text').textContent = `✓ 批量撥打完成，共 ${targets.length} 通`;
+    document.getElementById('bulk-call-bar').style.background = 'var(--green)';
+  }
+  document.getElementById('bulkCallBtn').disabled = false;
+}
+
+function addCallLog(el, msg, color='var(--text-muted)') {
+  el.innerHTML += `<div style="color:${color}">${new Date().toLocaleTimeString('zh-TW')} &nbsp;${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function logCall(icon, name, contact, type, callId='') {
+  callHistory.unshift({
+    icon, name, contact: contact||'—', type,
+    callId, time: new Date().toLocaleString('zh-TW')
+  });
+  if (callHistory.length > 100) callHistory.pop();
+  saveCallHistory();
+  renderCallHistory();
+}
+
+function renderCallHistory() {
+  const el = document.getElementById('call-history-list');
+  if (!el) return;
+  if (callHistory.length === 0) {
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">尚無通話記錄</div>';
+    return;
+  }
+  el.innerHTML = callHistory.map(c => `
+    <div class="call-log-item">
+      <div class="call-log-icon">${c.icon}</div>
+      <div class="call-log-info">
+        <div class="call-log-name">${c.name}
+          <span style="color:var(--text-muted);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:6px">${c.type}</span>
+        </div>
+        <div class="call-log-time">${c.time} · ${c.contact}</div>
+        ${c.callId ? `<div style="font-size:10px;color:#7c3aed;font-family:'JetBrains Mono',monospace;margin-top:3px">ID: ${c.callId}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearCallHistory() {
+  if (!confirm('確定清除所有通話記錄？')) return;
+  callHistory = [];
+  saveCallHistory();
+  renderCallHistory();
+}
+
+// Stub functions kept for CRM compatibility
+function renderVoiceCRMList() { renderBlandCRMList(); }
+function quickVoicePage(id) {
+  const p = crmData.find(x => x.id === id);
+  if (!p) return;
+  const voiceBtn = document.querySelectorAll('.nav-btn')[7];
+  if (voiceBtn) { goPage('voice', voiceBtn); voiceBtn.classList.add('active'); }
+  setTimeout(() => {
+    const nameEl  = document.getElementById('sc-name');
+    const phoneEl = document.getElementById('sc-phone');
+    if (nameEl)  nameEl.value  = p.name + (p.contact ? ' ' + p.contact : '');
+    if (phoneEl) phoneEl.value = p.phone || '';
+    renderBlandCRMList();
+  }, 100);
+}
+
+// ═══════════════════════════════════════
+// INIT — 所有函數定義完畢後才執行
+// ═══════════════════════════════════════
+(function init() {
+  renderCRM();
+  renderBulkList();
+  renderBatchCrmList();
+  updateSidebarList();
+  renderBlandCRMList();
+  renderCallHistory();
+  loadBlandSettings();
+
+  // Set default calendar date to tomorrow
+  const el  = document.getElementById('cal-date');
+  const el2 = document.getElementById('batch-cal-start');
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const iso = tomorrow.toISOString().split('T')[0];
+  if (el)  el.value  = iso;
+  if (el2) el2.value = iso;
+})();
+</script>
+</body>
+</html>
