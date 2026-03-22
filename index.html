@@ -506,8 +506,8 @@ tr:hover .td{background:rgba(255,255,255,.015);}
     <button class="mode-btn" onclick="setMode('b2c',this)">B2C 消費者</button>
   </div>
   <div class="topbar-right">
-    <div class="live-dot"></div>
-    <span class="live-label">AI 已就緒</span>
+    <div class="live-dot" id="live-dot"></div>
+    <span class="live-label" id="live-label">請設定 API Key</span>
   </div>
 </div>
 
@@ -545,6 +545,9 @@ tr:hover .td{background:rgba(255,255,255,.015);}
       <button class="nav-btn" onclick="goPage('voice',this)">
         <span class="nav-icon">☎</span> 語音撥打
         <span class="nav-chip" style="background:#8b5cf6">NEW</span>
+      </button>
+      <button class="nav-btn" onclick="goPage('settings',this)">
+        <span class="nav-icon">⚙</span> 設定 / API Key
       </button>
     </div>
     <div class="nav-section">
@@ -1384,6 +1387,80 @@ tr:hover .td{background:rgba(255,255,255,.015);}
 
       </div>
 
+      <!-- ══ SETTINGS PAGE ══ -->
+      <div id="page-settings" class="tab-content">
+
+        <!-- Gemini API Key -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">⚡</span> Google Gemini AI 引擎</div>
+            <span id="gemini-status-badge" style="font-size:11px;padding:4px 10px;border-radius:3px;font-family:'JetBrains Mono',monospace;">⚠ 請設定 API Key</span>
+          </div>
+          <div class="card-body">
+            <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:4px;padding:14px 16px;margin-bottom:18px;font-size:12.5px;line-height:1.9;color:var(--text-dim)">
+              <strong style="color:#60a5fa">🆓 完全免費</strong>，不需要信用卡！每天 1,500 次請求，一般業務使用完全夠用。<br>
+              <strong style="color:var(--green)">① </strong>前往 <a href="https://aistudio.google.com" target="_blank" style="color:#60a5fa">aistudio.google.com</a> 用 Google 帳號登入<br>
+              <strong style="color:var(--green)">② </strong>點左側 <strong>「Get API Key」</strong> → <strong>「Create API Key」</strong><br>
+              <strong style="color:var(--green)">③ </strong>複製 Key（格式：<span style="font-family:'JetBrains Mono',monospace;color:var(--orange)">AIza...</span>）貼入下方
+            </div>
+            <div class="fgroup" style="margin-bottom:14px">
+              <div class="flabel">Gemini API Key</div>
+              <input id="gemini-key-input" type="password" placeholder="AIzaSy... （貼入你的 Gemini API Key）" oninput="saveGeminiKey()">
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="testGeminiKey()">⚡ 測試連線</button>
+              <div id="geminiTestStatus" class="send-status hidden" style="margin-left:10px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bland.ai Key -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">🤖</span> Bland.ai AI 語音撥打</div>
+            <span id="bland-status-badge" style="font-size:11px;padding:4px 10px;border-radius:3px;font-family:'JetBrains Mono',monospace;background:rgba(139,92,246,.1);color:#a78bfa;border:1px solid rgba(139,92,246,.2)">未設定</span>
+          </div>
+          <div class="card-body">
+            <div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:4px;padding:14px 16px;margin-bottom:18px;font-size:12.5px;line-height:1.9;color:var(--text-dim)">
+              <strong style="color:#a78bfa">AI 自動撥打客戶電話</strong>，完全不需要你開口，AI 用繁體中文介紹產品。<br>
+              <strong style="color:var(--green)">① </strong>前往 <a href="https://app.bland.ai" target="_blank" style="color:#a78bfa">app.bland.ai</a> 免費註冊<br>
+              <strong style="color:var(--green)">② </strong>進入 <strong>Settings → API Keys</strong> → 複製 Key<br>
+              <strong style="color:var(--green)">③ </strong>購買發話號碼（約 $1.15/月）→ 填入下方
+            </div>
+            <div class="form-row">
+              <div class="fgroup">
+                <div class="flabel">Bland.ai API Key</div>
+                <input id="bland-apikey" type="password" placeholder="sk-...（Bland.ai API Key）" oninput="saveBlandKey()">
+              </div>
+              <div class="fgroup">
+                <div class="flabel">發話號碼（E.164 格式）</div>
+                <input id="bland-from" placeholder="+1XXXXXXXXXX" oninput="saveBlandKey()">
+              </div>
+            </div>
+            <div class="btn-row" style="margin-top:6px">
+              <button class="btn btn-primary" onclick="verifyBlandKey()" style="background:#5b21b6">✓ 驗證 Bland Key</button>
+              <div id="blandVerifyStatus" class="send-status hidden" style="margin-left:10px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Usage tips -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="card-title-accent">💡</span> 使用說明</div>
+          </div>
+          <div class="card-body">
+            <div style="font-size:13px;line-height:2;color:var(--text-dim)">
+              <strong style="color:var(--text)">API Key 安全性：</strong>Key 只儲存在你自己瀏覽器的 localStorage，不會上傳到任何伺服器。<br>
+              <strong style="color:var(--text)">Gemini 免費額度：</strong>每天 1,500 次 / 每分鐘 15 次請求，一般使用完全足夠。<br>
+              <strong style="color:var(--text)">Gmail 發送：</strong>目前需要手動複製生成內容到 Gmail 發送（API 限制）。<br>
+              <strong style="color:var(--text)">換電腦：</strong>需要重新填入 API Key，建議記錄在安全的地方。
+            </div>
+          </div>
+        </div>
+
+      </div>
+
     </div><!-- /scrollArea -->
   </div><!-- /main -->
 
@@ -1481,8 +1558,41 @@ tr:hover .td{background:rgba(255,255,255,.015);}
 </div><!-- /app -->
 
 <script>
-const API = 'https://api.anthropic.com/v1/messages';
 let currentMode = 'b2b';
+
+// ═══════════════════════════════════════
+// GEMINI API 設定
+// ═══════════════════════════════════════
+let GEMINI_KEY = localStorage.getItem('gemini_api_key') || '';
+
+function saveGeminiKey() {
+  const k = document.getElementById('gemini-key-input')?.value.trim() || '';
+  GEMINI_KEY = k;
+  localStorage.setItem('gemini_api_key', k);
+  updateGeminiStatus();
+}
+
+function updateGeminiStatus() {
+  const badge = document.getElementById('gemini-status-badge');
+  const dot   = document.getElementById('live-dot');
+  const label = document.getElementById('live-label');
+  if (!badge) return;
+  if (GEMINI_KEY) {
+    badge.textContent = '✓ AI 已就緒';
+    badge.style.background = 'rgba(34,197,94,.15)';
+    badge.style.color = '#22c55e';
+    badge.style.border = '1px solid rgba(34,197,94,.3)';
+    if (dot)   { dot.style.background = '#22c55e'; dot.style.boxShadow = '0 0 8px #22c55e'; }
+    if (label) label.textContent = 'AI 已就緒';
+  } else {
+    badge.textContent = '⚠ 請設定 API Key';
+    badge.style.background = 'rgba(234,179,8,.15)';
+    badge.style.color = '#eab308';
+    badge.style.border = '1px solid rgba(234,179,8,.3)';
+    if (dot)   { dot.style.background = '#eab308'; dot.style.boxShadow = '0 0 8px #eab308'; }
+    if (label) label.textContent = '請設定 API Key';
+  }
+}
 
 function setMode(m, el) {
   currentMode = m;
@@ -1491,7 +1601,7 @@ function setMode(m, el) {
 }
 
 // Navigation
-const pages = ['email','profile','script','followup','crm','bulk','calendar','voice'];
+const pages = ['email','profile','script','followup','crm','bulk','calendar','voice','settings'];
 const pageMeta = {
   email:    { title:'開發信生成', sub:'AI 自動生成高度個人化的業務開發信' },
   profile:  { title:'客戶畫像分析', sub:'深度分析客戶決策結構、痛點與最佳切入時機' },
@@ -1500,7 +1610,8 @@ const pageMeta = {
   crm:      { title:'客戶 CRM 資料庫', sub:'統一管理所有潛在客戶資料、階段與備注' },
   bulk:     { title:'批量發送', sub:'從 CRM 名單一鍵批量發送個人化開發信' },
   calendar: { title:'Google Calendar 跟進提醒', sub:'自動將跟進任務加入 Google Calendar' },
-  voice:    { title:'語音撥打助理', sub:'AI 生成通話腳本，一鍵用電話或 LINE 直接撥打客戶' },
+  voice:    { title:'AI 語音撥打助理', sub:'Bland.ai 自動撥打客戶電話，AI 用繁體中文介紹產品' },
+  settings: { title:'設定 / API Key', sub:'設定 Gemini AI 引擎與 Bland.ai 語音撥打服務' },
 };
 function goPage(name, el) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -1525,20 +1636,23 @@ function switchFn(name, el) {
   });
 }
 
-// API
+// ── GEMINI API CALL ──
 async function callAI(prompt) {
-  const res = await fetch(API, {
+  if (!GEMINI_KEY) {
+    throw new Error('請先到「⚙ 設定」頁面填入 Gemini API Key');
+  }
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      messages: [{ role: 'user', content: prompt }]
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 2048, temperature: 0.8 }
     })
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  return data.content?.[0]?.text || '生成失敗';
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '生成失敗';
 }
 
 function fmt(text) {
@@ -1807,83 +1921,30 @@ function setStatus(id, type, msg) {
 }
 
 async function sendGmail() {
-  const to = document.getElementById('gmail-to').value.trim();
-  const subjectInput = document.getElementById('gmail-subject').value.trim();
-  const body = getPlainText('emailResultBody');
+  const to      = document.getElementById('gmail-to').value.trim();
+  const subject = document.getElementById('gmail-subject').value.trim() || extractSubject(getPlainText('emailResultBody'));
+  const body    = getPlainText('emailResultBody');
 
-  if (!to) { setStatus('gmailStatus','error','⚠ 請填寫收件人 Email'); return; }
+  if (!to)   { setStatus('gmailStatus','error','⚠ 請填寫收件人 Email'); return; }
   if (!body) { setStatus('gmailStatus','error','⚠ 請先生成信件內容'); return; }
 
-  const subject = subjectInput || extractSubject(body);
-  const btn = document.getElementById('gmailSendBtn');
-  btn.disabled = true;
-  setStatus('gmailStatus','loading','⟳ 透過 Gmail 發送中...');
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail' }],
-        messages: [{
-          role: 'user',
-          content: `請用 Gmail 發送以下郵件：
-收件人：${to}
-主旨：${subject}
-正文：
-${body}
-
-請直接使用 Gmail 工具發送，不需要我確認。`
-        }]
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    // Check if tool was used (mcp_tool_use present) or text confirms success
-    const hasToolUse = data.content?.some(c => c.type === 'mcp_tool_use' || c.type === 'mcp_tool_result');
-    const textResp = data.content?.filter(c=>c.type==='text').map(c=>c.text).join('');
-    if (hasToolUse || textResp.includes('發送') || textResp.includes('sent') || textResp.includes('成功')) {
-      setStatus('gmailStatus','success','✓ 郵件已透過 Gmail 發送成功！');
-      document.getElementById('gmail-to').value = '';
-    } else {
-      setStatus('gmailStatus','error','⚠ 發送可能未完成，請確認 Gmail 授權。');
-    }
-  } catch(e) {
-    setStatus('gmailStatus','error','✗ 發送失敗：' + e.message);
-  }
-  btn.disabled = false;
+  // Open Gmail compose window with pre-filled content
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(gmailUrl, '_blank');
+  setStatus('gmailStatus','success','✓ 已開啟 Gmail 草稿，請確認後發送！');
 }
 
 async function sendFollowupGmail() {
-  const to = document.getElementById('fu-gmail-to').value.trim();
-  const subjectInput = document.getElementById('fu-gmail-subject').value.trim();
-  const body = getPlainText('followupResultBody');
+  const to      = document.getElementById('fu-gmail-to').value.trim();
+  const subject = document.getElementById('fu-gmail-subject').value.trim() || extractSubject(getPlainText('followupResultBody')) || '跟進：上次聯繫的後續';
+  const body    = getPlainText('followupResultBody');
 
-  if (!to) { setStatus('fuGmailStatus','error','⚠ 請填寫收件人 Email'); return; }
+  if (!to)   { setStatus('fuGmailStatus','error','⚠ 請填寫收件人 Email'); return; }
   if (!body) { setStatus('fuGmailStatus','error','⚠ 請先生成跟進訊息'); return; }
 
-  const subject = subjectInput || extractSubject(body) || '跟進：上次聯繫的後續';
-  setStatus('fuGmailStatus','loading','⟳ 發送中...');
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail' }],
-        messages: [{ role: 'user', content: `請用 Gmail 發送郵件給 ${to}，主旨：${subject}，正文：${body}。直接發送。` }]
-      })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-    setStatus('fuGmailStatus','success','✓ 跟進郵件已發送！');
-  } catch(e) {
-    setStatus('fuGmailStatus','error','✗ 發送失敗：' + e.message);
-  }
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(gmailUrl, '_blank');
+  setStatus('fuGmailStatus','success','✓ 已開啟 Gmail 草稿，請確認後發送！');
 }
 
 // ─────────────────────────────────────────
@@ -2186,23 +2247,13 @@ async function startBulkSend() {
     const pct = Math.round(((i) / targets.length) * 100);
     document.getElementById('bulk-prog-bar').style.width = pct + '%';
     document.getElementById('bulk-prog-count').textContent = `${i} / ${targets.length}`;
-    document.getElementById('bulk-prog-text').textContent = `正在發送給 ${t.name}...`;
+    document.getElementById('bulk-prog-text').textContent = `正在開啟 ${t.name} 的 Gmail 草稿...`;
 
     const personalBody = body.replace(/{name}/g, t.name);
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 500,
-          mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail' }],
-          messages: [{ role: 'user', content: `請用 Gmail 發送郵件給 ${t.email}，主旨：${subject}，正文：${personalBody}。直接發送，不需要確認。` }]
-        })
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      addLog(log, `✓ ${t.name} (${t.email}) — 發送成功`, 'var(--green)');
+      const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(t.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(personalBody)}`;
+      window.open(gmailUrl, '_blank');
+      addLog(log, `✓ ${t.name} (${t.email}) — Gmail 草稿已開啟`, 'var(--green)');
     } catch(e) {
       addLog(log, `✗ ${t.name} — 失敗：${e.message}`, '#f87171');
     }
@@ -2214,7 +2265,7 @@ async function startBulkSend() {
   }
 
   if (!bulkStopped) {
-    document.getElementById('bulk-prog-text').textContent = `✓ 全部發送完成！共 ${targets.length} 封`;
+    document.getElementById('bulk-prog-text').textContent = `✓ 全部草稿已開啟！共 ${targets.length} 封，請逐一確認發送`;
     document.getElementById('bulk-prog-bar').style.background = 'var(--green)';
   }
   document.getElementById('bulkSendBtn').disabled = false;
@@ -2352,6 +2403,20 @@ function addHour(timeStr, hours) {
   const [h, m] = timeStr.split(':').map(Number);
   const newH = (h + hours) % 24;
   return `${String(newH).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+async function testGeminiKey() {
+  if (!GEMINI_KEY) { setStatus('geminiTestStatus','error','⚠ 請先填入 API Key'); return; }
+  setStatus('geminiTestStatus','loading','⟳ 測試中...');
+  try {
+    const result = await callAI('請回覆「連線成功」四個字即可');
+    if (result) {
+      setStatus('geminiTestStatus','success','✓ 連線成功！Gemini AI 已就緒');
+      updateGeminiStatus();
+    }
+  } catch(e) {
+    setStatus('geminiTestStatus','error','✗ 連線失敗：' + e.message);
+  }
 }
 
 // ═══════════════════════════════════════
@@ -2660,6 +2725,15 @@ function quickVoicePage(id) {
   renderBlandCRMList();
   renderCallHistory();
   loadBlandSettings();
+
+  // Load Gemini key and update status
+  const savedKey = localStorage.getItem('gemini_api_key') || '';
+  if (savedKey) {
+    GEMINI_KEY = savedKey;
+    const keyInput = document.getElementById('gemini-key-input');
+    if (keyInput) keyInput.value = savedKey;
+  }
+  updateGeminiStatus();
 
   // Set default calendar date to tomorrow
   const el  = document.getElementById('cal-date');
