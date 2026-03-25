@@ -1393,19 +1393,20 @@ tr:hover .td{background:rgba(255,255,255,.015);}
         <!-- Gemini API Key -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title"><span class="card-title-accent">⚡</span> Google Gemini AI 引擎</div>
+            <div class="card-title"><span class="card-title-accent">⚡</span> OpenRouter AI 引擎（免費）</div>
             <span id="gemini-status-badge" style="font-size:11px;padding:4px 10px;border-radius:3px;font-family:'JetBrains Mono',monospace;">⚠ 請設定 API Key</span>
           </div>
           <div class="card-body">
             <div style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:4px;padding:14px 16px;margin-bottom:18px;font-size:12.5px;line-height:1.9;color:var(--text-dim)">
-              <strong style="color:#60a5fa">🆓 完全免費</strong>，不需要信用卡！每天 1,500 次請求，一般業務使用完全夠用。<br>
-              <strong style="color:var(--green)">① </strong>前往 <a href="https://aistudio.google.com" target="_blank" style="color:#60a5fa">aistudio.google.com</a> 用 Google 帳號登入<br>
-              <strong style="color:var(--green)">② </strong>點左側 <strong>「Get API Key」</strong> → <strong>「Create API Key」</strong><br>
-              <strong style="color:var(--green)">③ </strong>複製 Key（格式：<span style="font-family:'JetBrains Mono',monospace;color:var(--orange)">AIza...</span>）貼入下方
+              <strong style="color:#60a5fa">🆓 完全免費</strong>，不需要信用卡！支援多種 AI 模型，台灣可正常使用。<br>
+              <strong style="color:var(--green)">① </strong>前往 <a href="https://openrouter.ai" target="_blank" style="color:#60a5fa">openrouter.ai</a> 用 Google 帳號登入<br>
+              <strong style="color:var(--green)">② </strong>點右上角頭像 → <strong>「Keys」</strong> → <strong>「Create Key」</strong><br>
+              <strong style="color:var(--green)">③ </strong>複製 Key（格式：<span style="font-family:'JetBrains Mono',monospace;color:var(--orange)">sk-or-...</span>）貼入下方<br>
+              <strong style="color:var(--yellow)">⚠ 請勿把 Key 貼在公開對話或網頁上</strong>
             </div>
             <div class="fgroup" style="margin-bottom:14px">
-              <div class="flabel">Gemini API Key</div>
-              <input id="gemini-key-input" type="password" placeholder="AIzaSy... （貼入你的 Gemini API Key）" oninput="saveGeminiKey()">
+              <div class="flabel">OpenRouter API Key</div>
+              <input id="gemini-key-input" type="password" placeholder="sk-or-... （貼入你的 OpenRouter API Key）" oninput="saveGeminiKey()">
             </div>
             <div class="btn-row">
               <button class="btn btn-primary" onclick="testGeminiKey()">⚡ 測試連線</button>
@@ -1611,7 +1612,7 @@ const pageMeta = {
   bulk:     { title:'批量發送', sub:'從 CRM 名單一鍵批量發送個人化開發信' },
   calendar: { title:'Google Calendar 跟進提醒', sub:'自動將跟進任務加入 Google Calendar' },
   voice:    { title:'AI 語音撥打助理', sub:'Bland.ai 自動撥打客戶電話，AI 用繁體中文介紹產品' },
-  settings: { title:'設定 / API Key', sub:'設定 Gemini AI 引擎與 Bland.ai 語音撥打服務' },
+  settings: { title:'設定 / API Key', sub:'設定 OpenRouter AI 引擎（免費）與 Bland.ai 語音撥打服務' },
 };
 function goPage(name, el) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -1636,23 +1637,28 @@ function switchFn(name, el) {
   });
 }
 
-// ── GEMINI API CALL ──
+// ── OPENROUTER API CALL ──
 async function callAI(prompt) {
   if (!GEMINI_KEY) {
-    throw new Error('請先到「⚙ 設定」頁面填入 Gemini API Key');
+    throw new Error('請先到「⚙ 設定」頁面填入 OpenRouter API Key');
   }
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
-  const res = await fetch(url, {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + GEMINI_KEY,
+      'HTTP-Referer': 'https://h0915795711-hub.github.io/huntai/',
+      'X-Title': 'HUNTAI PRO'
+    },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 2048, temperature: 0.8 }
+      model: 'google/gemini-2.0-flash-exp:free',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 2048
     })
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '生成失敗';
+  return data.choices?.[0]?.message?.content || '生成失敗';
 }
 
 function fmt(text) {
