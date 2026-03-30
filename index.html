@@ -1934,10 +1934,26 @@ async function sendGmail() {
   if (!to)   { setStatus('gmailStatus','error','⚠ 請填寫收件人 Email'); return; }
   if (!body) { setStatus('gmailStatus','error','⚠ 請先生成信件內容'); return; }
 
-  // Open Gmail compose window with pre-filled content
-  const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  window.open(gmailUrl, '_blank');
-  setStatus('gmailStatus','success','✓ 已開啟 Gmail 草稿，請確認後發送！');
+  const btn = document.getElementById('gmailSendBtn');
+  if (btn) btn.disabled = true;
+  setStatus('gmailStatus','loading','⟳ 自動發送中...');
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ to, subject, body })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setStatus('gmailStatus','success','✓ 郵件已自動發送成功！');
+      document.getElementById('gmail-to').value = '';
+    } else {
+      throw new Error(data.error || '發送失敗');
+    }
+  } catch(e) {
+    setStatus('gmailStatus','error','✗ 發送失敗：' + e.message);
+  }
+  if (btn) btn.disabled = false;
 }
 
 async function sendFollowupGmail() {
@@ -1948,9 +1964,21 @@ async function sendFollowupGmail() {
   if (!to)   { setStatus('fuGmailStatus','error','⚠ 請填寫收件人 Email'); return; }
   if (!body) { setStatus('fuGmailStatus','error','⚠ 請先生成跟進訊息'); return; }
 
-  const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  window.open(gmailUrl, '_blank');
-  setStatus('fuGmailStatus','success','✓ 已開啟 Gmail 草稿，請確認後發送！');
+  setStatus('fuGmailStatus','loading','⟳ 自動發送中...');
+  try {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ to, subject, body })
+    });
+    const data = await res.json();
+    if (data.success) {
+      setStatus('fuGmailStatus','success','✓ 跟進郵件已自動發送！');
+    } else {
+      throw new Error(data.error || '發送失敗');
+    }
+  } catch(e) {
+    setStatus('fuGmailStatus','error','✗ 發送失敗：' + e.message);
+  }
 }
 
 // ─────────────────────────────────────────
@@ -2229,6 +2257,8 @@ function previewBulk() {
 
 function stopBulk() { bulkStopped = true; }
 
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx0SJTm3FhkhrGCLj2WfziQh1B_uT5KYiuPawM6XMNE3sbwRLk-3KLf9DfJYvpiTFPM6Q/exec';
+
 async function startBulkSend() {
   const targets = getBulkTargets();
   const subject = document.getElementById('bulk-subject').value.trim();
@@ -2245,33 +2275,36 @@ async function startBulkSend() {
   log.innerHTML = '';
 
   for (let i = 0; i < targets.length; i++) {
-    if (bulkStopped) {
-      addLog(log, '⏹ 已停止發送', 'var(--yellow)');
-      break;
-    }
+    if (bulkStopped) { addLog(log,'⏹ 已停止發送','var(--yellow)'); break; }
+
     const t = targets[i];
-    const pct = Math.round(((i) / targets.length) * 100);
-    document.getElementById('bulk-prog-bar').style.width = pct + '%';
+    document.getElementById('bulk-prog-bar').style.width = Math.round((i/targets.length)*100) + '%';
     document.getElementById('bulk-prog-count').textContent = `${i} / ${targets.length}`;
-    document.getElementById('bulk-prog-text').textContent = `正在開啟 ${t.name} 的 Gmail 草稿...`;
+    document.getElementById('bulk-prog-text').textContent = `⟳ 正在發送給 ${t.name}...`;
 
     const personalBody = body.replace(/{name}/g, t.name);
     try {
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(t.email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(personalBody)}`;
-      window.open(gmailUrl, '_blank');
-      addLog(log, `✓ ${t.name} (${t.email}) — Gmail 草稿已開啟`, 'var(--green)');
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ to: t.email, subject, body: personalBody })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addLog(log, `✓ ${t.name} (${t.email}) — 已自動發送`, 'var(--green)');
+      } else {
+        throw new Error(data.error || '發送失敗');
+      }
     } catch(e) {
-      addLog(log, `✗ ${t.name} — 失敗：${e.message}`, '#f87171');
+      addLog(log, `✗ ${t.name} (${t.email}) — 失敗：${e.message}`, '#f87171');
     }
 
-    document.getElementById('bulk-prog-bar').style.width = Math.round(((i+1) / targets.length) * 100) + '%';
+    document.getElementById('bulk-prog-bar').style.width = Math.round(((i+1)/targets.length)*100) + '%';
     document.getElementById('bulk-prog-count').textContent = `${i+1} / ${targets.length}`;
-
     if (i < targets.length - 1) await sleep(delay);
   }
 
   if (!bulkStopped) {
-    document.getElementById('bulk-prog-text').textContent = `✓ 全部草稿已開啟！共 ${targets.length} 封，請逐一確認發送`;
+    document.getElementById('bulk-prog-text').textContent = `✓ 全部發送完成！共 ${targets.length} 封`;
     document.getElementById('bulk-prog-bar').style.background = 'var(--green)';
   }
   document.getElementById('bulkSendBtn').disabled = false;
