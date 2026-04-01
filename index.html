@@ -2243,17 +2243,17 @@ function stopBulk() { bulkStopped = true; }
 
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbx0SJTm3FhkhrGCLj2WfziQh1B_uT5KYiuPawM6XMNE3sbwRLk-3KLf9DfJYvpiTFPM6Q/exec';
 
-// 透過 fetch no-cors 發送到 Google Apps Script
+// 透過 GET 參數發送到 Google Apps Script（解決 CORS 問題）
 async function gasSend(to, subject, body) {
-  await fetch(GAS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to, subject, body })
-  });
-  // no-cors 無法讀取回傳，等 1 秒視為成功
-  await sleep(1000);
-  return { success: true };
+  const url = GAS_URL
+    + '?to=' + encodeURIComponent(to)
+    + '&subject=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(body);
+
+  const res = await fetch(url, { method: 'GET', mode: 'cors' });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || '發送失敗');
+  return data;
 }
 
 async function startBulkSend() {
